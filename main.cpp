@@ -38,6 +38,7 @@
 #if HAS_LIBUSB
     #include "picoboot_connection_cxx.h"
     #include "get_xip_ram_perms.h"
+    #include "lfs.h"
 #else
     #include "picoboot_connection.h"
 #endif
@@ -53,8 +54,6 @@
 #include "hardware/regs/otp_data.h"
 
 #include "nlohmann/json.hpp"
-
-#include "lfs.h"
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
@@ -1624,7 +1623,9 @@ auto help_cmd = std::shared_ptr<help_command>(new help_command());
 
 vector<std::shared_ptr<cmd>> commands {
         std::shared_ptr<cmd>(new info_command()),
+    #if HAS_LIBUSB
         std::shared_ptr<cmd>(new bdev_command()),
+    #endif
         std::shared_ptr<cmd>(new config_command()),
     #if HAS_LIBUSB
         std::shared_ptr<cmd>(new load_command()),
