@@ -7,7 +7,9 @@
 
 #include "enc_bootloader.h"
 #include "enc_bootloader_elf.h"
+#if HAS_MBEDTLS
 #include "enc_bootloader_mbedtls_elf.h"
+#endif
 
 #include "data_locs.h"
 
@@ -38,9 +40,12 @@ std::shared_ptr<std::iostream> get_enc_bootloader(bool use_mbedtls) {
     // fall back to embedded enc_bootloader.elf file
     printf("Could not find enc_bootloader%s.elf file - using embedded binary\n", use_mbedtls ? "_mbedtls" : "");
     auto tmp = std::make_shared<std::stringstream>();
+#if HAS_MBEDTLS
     if (use_mbedtls) {
         tmp->write(reinterpret_cast<const char*>(enc_bootloader_mbedtls_elf), enc_bootloader_mbedtls_elf_SIZE);
-    } else {
+    } else
+#endif
+    {
         tmp->write(reinterpret_cast<const char*>(enc_bootloader_elf), enc_bootloader_elf_SIZE);
     }
     return tmp;
