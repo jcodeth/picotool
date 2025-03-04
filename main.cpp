@@ -518,6 +518,7 @@ struct _settings {
         bool embed = false;
         bool otp_key_page_set = false;
         bool fast_rosc = false;
+        bool use_mbedtls = false;
         uint16_t otp_key_page = 30;
     } encrypt;
 
@@ -831,6 +832,7 @@ struct encrypt_command : public cmd {
             option("--verbose").set(settings.verbose) % "Print verbose output" +
             option("--embed").set(settings.encrypt.embed) % "Embed bootloader in output file" +
             option("--fast-rosc").set(settings.encrypt.fast_rosc) % "Use ~180MHz ROSC configuration for embedded bootloader" +
+            option("--use-mbedtls").set(settings.encrypt.use_mbedtls) % "Use MbedTLS implementation of embedded bootloader" +
             (
                 option("--otp-key-page").set(settings.encrypt.otp_key_page_set) % "Specify the OTP page storing the AES key (IV salt is stored on the next page)" &
                     integer("page").set(settings.encrypt.otp_key_page) % "OTP page (default 30)"
@@ -5077,7 +5079,7 @@ bool encrypt_command::execute(device_map &devices) {
                 iv_data[i] ^= iv_salt[i];
             }
             auto tmp = std::make_shared<std::stringstream>();
-            auto file = get_enc_bootloader();
+            auto file = get_enc_bootloader(settings.encrypt.use_mbedtls);
             *tmp << file->rdbuf();
 
             auto program = get_iostream_memory_access<iostream_memory_access>(tmp, filetype::elf, true);

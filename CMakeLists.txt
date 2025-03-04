@@ -57,14 +57,18 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+# To configure mbedtls
+# todo make the configuration better
+set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
+add_compile_options(-I${CMAKE_SOURCE_DIR}/lib/include)
+
+add_subdirectory(lib)
+
 if (NOT DEFINED USE_PRECOMPILED)
     set(USE_PRECOMPILED true)
 endif()
 
 # compile enc_bootloader.elf
-if (NOT DEFINED USE_PRECOMPILED)
-    set(USE_PRECOMPILED true)
-endif()
 ExternalProject_Add(enc_bootloader
         PREFIX enc_bootloader
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/enc_bootloader
@@ -73,6 +77,7 @@ ExternalProject_Add(enc_bootloader
             "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
             "-DPICO_SDK_PATH:FILEPATH=${PICO_SDK_PATH}"
             "-DUSE_PRECOMPILED:BOOL=${USE_PRECOMPILED}"
+            "-DUSE_MBEDTLS=0"
             "-DPICO_DEBUG_INFO_IN_RELEASE=OFF"
         BUILD_ALWAYS 1 # todo remove this
         INSTALL_COMMAND ""
@@ -87,6 +92,32 @@ add_custom_command(TARGET enc_bootloader
     COMMAND ${CMAKE_COMMAND} -E copy ${ENC_BOOTLOADER_ELF} ${CMAKE_BINARY_DIR}/enc_bootloader.elf
     DEPENDS enc_bootloader
 )
+
+if (TARGET mbedtls)
+    ExternalProject_Add(enc_bootloader_mbedtls
+            PREFIX enc_bootloader_mbedtls
+            SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/enc_bootloader
+            BINARY_DIR ${CMAKE_BINARY_DIR}/enc_bootloader_mbedtls
+            CMAKE_ARGS 
+                "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
+                "-DPICO_SDK_PATH:FILEPATH=${PICO_SDK_PATH}"
+                "-DUSE_PRECOMPILED:BOOL=${USE_PRECOMPILED}"
+                "-DUSE_MBEDTLS=1"
+                "-DPICO_DEBUG_INFO_IN_RELEASE=OFF"
+            BUILD_ALWAYS 1 # todo remove this
+            INSTALL_COMMAND ""
+            )
+
+    set(ENC_BOOTLOADER_MBEDTLS_ELF ${CMAKE_BINARY_DIR}/enc_bootloader_mbedtls/enc_bootloader.elf)
+    add_executable(enc_bootloader_mbedtls_elf IMPORTED)
+    add_dependencies(enc_bootloader_mbedtls_elf enc_bootloader_mbedtls)
+    set_property(TARGET enc_bootloader_mbedtls_elf PROPERTY IMPORTED_LOCATION ${ENC_BOOTLOADER_MBEDTLS_ELF})
+    # copy enc_bootloader_mbedtls.elf into build directory
+    add_custom_command(TARGET enc_bootloader_mbedtls
+        COMMAND ${CMAKE_COMMAND} -E copy ${ENC_BOOTLOADER_MBEDTLS_ELF} ${CMAKE_BINARY_DIR}/enc_bootloader_mbedtls.elf
+        DEPENDS enc_bootloader_mbedtls
+    )
+endif()
 
 if (NOT PICOTOOL_NO_LIBUSB)
     # compile xip_ram_perms.elf
@@ -197,8 +228,14 @@ if (NOT PICOTOOL_NO_LIBUSB)
     endif()
 endif()
 
-add_custom_target(binary_data_no_libusb DEPENDS
-        ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h)
+if (TARGET mbedtls)
+    add_custom_target(binary_data_no_libusb DEPENDS
+            ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h
+            ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_mbedtls_elf.h)
+else()
+    add_custom_target(binary_data_no_libusb DEPENDS
+            ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h)
+endif()
 
 add_custom_target(binary_data DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/rp2350.rom.h
@@ -227,6 +264,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h
         DEPENDS enc_bootloader
         COMMENT "Configuring enc_bootloader_elf.h"
         VERBATIM)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_mbedtls_elf.h
+        COMMAND ${CMAKE_COMMAND}
+            -D BINARY_FILE=${ENC_BOOTLOADER_MBEDTLS_ELF}
+            -D OUTPUT_NAME=enc_bootloader_mbedtls_elf
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/binh.cmake
+        DEPENDS enc_bootloader_mbedtls
+        COMMENT "Configuring enc_bootloader_mbedtls_elf.h"
+        VERBATIM)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/flash_id_bin.h
         COMMAND ${CMAKE_COMMAND}
             -D BINARY_FILE=${FLASH_ID_BIN}
@@ -241,13 +286,6 @@ add_subdirectory(errors)
 add_subdirectory(picoboot_connection)
 add_subdirectory(elf)
 add_subdirectory(elf2uf2)
-
-# To configure mbedtls
-# todo make the configuration better
-set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
-add_compile_options(-I${CMAKE_SOURCE_DIR}/lib/include)
-
-add_subdirectory(lib)
 
 add_subdirectory(bintool)
 
@@ -374,6 +412,15 @@ install(FILES
     ${ENC_BOOTLOADER_ELF}
     DESTINATION ${INSTALL_DATADIR}
 )
+
+if (TARGET mbedtls)
+    #Install enc_bootloader_mbedtls.elf
+    install(FILES
+        ${ENC_BOOTLOADER_MBEDTLS_ELF}
+        DESTINATION ${INSTALL_DATADIR}
+        RENAME enc_bootloader_mbedtls.elf
+    )
+endif()
 
 if (NOT PICOTOOL_NO_LIBUSB)
     if (NOT PICOTOOL_CODE_OTP)
