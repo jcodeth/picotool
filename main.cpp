@@ -246,8 +246,39 @@ template <typename T> struct range_map {
         }
     }
 
-    void empty() {
-        m.clear();
+    void insert_overwrite(const range& r, T t) {
+        if (r.to != r.from) {
+            assert(r.to > r.from);
+            // insert overlapping entry, and overwrite any it overlaps
+
+            // avoid modifying m while iterating through it
+            vector<uint32_t> to_erase;
+            vector<pair<uint32_t, pair<uint32_t, T>>> to_add;
+
+            auto f = m.upper_bound(r.from); // first element that starts after r.from
+            if (f != m.begin()) f--; // back up, to catch element that starts on or before r.from
+            for(; f != m.end() && f->first < r.to; f++) { // loop till we can't possibly overlap
+                range r2(f->first, f->second.first);
+                T r2off = f->second.second;
+                if (r2.intersects(r)) {
+                    // remove existing r2
+                    to_erase.push_back(r2.from);
+                    if (r2.from < r.from) {
+                        // add r2 which ends at start of r
+                        to_add.push_back(std::make_pair(r2.from, std::make_pair(r.from, r2off)));
+                    }
+                    if (r2.to > r.to) {
+                        // add r2 which starts at end of r
+                        to_add.push_back(std::make_pair(r.to, std::make_pair(r2.to, r2off + (r.to - r2.from))));
+                    }
+                }
+            }
+            for (auto k : to_erase) m.erase(k);
+            for (auto v : to_add) m.insert(v);
+
+            // finally, add the new entry
+            m.insert(std::make_pair(r.from, std::make_pair(r.to, t)));
+        }
     }
 
     pair<mapping, T> get(uint32_t p) {
@@ -2808,9 +2839,8 @@ void build_rmap_load_map(std::shared_ptr<load_map_item>load_map, range_map<uint3
             try {
                 rmap.insert(range(e.runtime_address, e.runtime_address + e.size), e.storage_address);
             } catch (command_failure&) {
-                // Overlapping memory ranges are permitted in a load_map, so empty the range map and then add the entry
-                rmap.empty();
-                rmap.insert(range(e.runtime_address, e.runtime_address + e.size), e.storage_address);
+                // Overlapping memory ranges are permitted in a load_map, so overwrite overlapping range
+                rmap.insert_overwrite(range(e.runtime_address, e.runtime_address + e.size), e.storage_address);
             }
         }
     }
