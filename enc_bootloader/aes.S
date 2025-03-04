@@ -1663,14 +1663,23 @@ ctr_crypt_s:
  pop {r1}
  ldmia r1,{r8-r11}        @ r8-r11 = IVshareB
  clear03 32
- bl gen_rand_sha_nonpres; eors r4,r4,r0;  mov r8, r8, ror#16;  eor r8, r8, r0,ror#16
- bl gen_rand_sha_nonpres; eors r5,r5,r0;  mov r9, r9, ror#16;  eor r9, r9, r0,ror#16
- bl gen_rand_sha_nonpres; eors r6,r6,r0;  mov r10,r10,ror#16;  eor r10,r10,r0,ror#16
- bl gen_rand_sha_nonpres; eors r7,r7,r0;  mov r11,r11,ror#16;  eor r11,r11,r0,ror#16
+ bl gen_rand_sha_nonpres; eors r4,r4,r0; movs r1,#0; mov r8, r8, ror#16; eor r8, r8, r0,ror#16   @ Barriers between shares to prevent implicit r4^r8 etc
+ bl gen_rand_sha_nonpres; eors r5,r5,r0; movs r1,#0; mov r9, r9, ror#16; eor r9, r9, r0,ror#16
+ bl gen_rand_sha_nonpres; eors r6,r6,r0; movs r1,#0; mov r10,r10,ror#16; eor r10,r10,r0,ror#16
+ bl gen_rand_sha_nonpres; eors r7,r7,r0; movs r1,#0; mov r11,r11,ror#16; eor r11,r11,r0,ror#16
  ldr r0,=IV0
  stmia r0,{r4-r7}
  adds r0,r0,#20
  stmia r0,{r8-r11}
+@ "Decommission" IV0 so that it doesn't get stacked
+ bl gen_rand_sha_nonpres; movs r4,r0
+ bl gen_rand_sha_nonpres; movs r5,r0
+ bl gen_rand_sha_nonpres; movs r6,r0
+ bl gen_rand_sha_nonpres; movs r7,r0
+ bl gen_rand_sha_nonpres; mov  r8,r0
+ bl gen_rand_sha_nonpres; mov  r9,r0
+ bl gen_rand_sha_nonpres; mov r10,r0
+ bl gen_rand_sha_nonpres; mov r11,r0
  pop {r1,r2}
 @ r1=cipher/plaintext buffer, r2=number of blocks
 
