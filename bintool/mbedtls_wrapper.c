@@ -61,7 +61,7 @@ int mb_aes_crypt_ctr_xor(mbedtls_aes_context *ctx,
         if (n == 0) {
             for (int i = 16; i > 0; i--) {
                 nonce_xor[i-1] = iv0[i-1];
-                if (i - (int)(16 - sizeof(counter)) > (int)0) {
+                if (i > 16 - sizeof(counter)) {
                     nonce_xor[i-1] ^= (unsigned char)(counter >> ((16-i)*8));
                 }
             }
@@ -88,10 +88,10 @@ void mb_aes256_buffer(const uint8_t *data, size_t len, uint8_t *data_out, const 
     assert(len % 16 == 0);
 
     mbedtls_aes_setkey_enc(&aes, key->bytes, 256);
-    uint8_t xor_working_block[16] = {0};
     uint8_t stream_block[16] = {0};
     size_t nc_off = 0;
 #if IV0_XOR
+    uint8_t xor_working_block[16] = {0};
     mb_aes_crypt_ctr_xor(&aes, len, iv->bytes, xor_working_block, stream_block, data, data_out);
 #else
     mbedtls_aes_crypt_ctr(&aes, len, &nc_off, iv->bytes, stream_block, data, data_out);
