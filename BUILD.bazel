@@ -40,9 +40,9 @@ picotool_binary_data_header(
 
 cc_library(
     name = "xip_ram_perms",
-    srcs = ["xip_ram_perms.cpp"],
+    srcs = ["get_xip_ram_perms.cpp"],
     hdrs = [
-        "xip_ram_perms.h",
+        "get_xip_ram_perms.h",
         "xip_ram_perms_elf.h",
     ],
     deps = [
@@ -53,9 +53,9 @@ cc_library(
 
 cc_library(
     name = "enc_bootloader",
-    srcs = ["enc_bootloader.cpp"],
+    srcs = ["get_enc_bootloader.cpp"],
     hdrs = [
-        "enc_bootloader.h",
+        "get_enc_bootloader.h",
         "enc_bootloader_elf.h",
         "enc_bootloader_mbedtls_elf.h",
     ],
@@ -89,8 +89,8 @@ cc_binary(
         "otp.cpp",
         "otp.h",
         "rp2350.rom.h",
-        "xip_ram_perms.cpp",
-        "enc_bootloader.cpp",
+        "get_xip_ram_perms.cpp",
+        "get_enc_bootloader.cpp",
     ] + select({
         # MSVC can't handle long strings, so use this manually generated
         # header instead.

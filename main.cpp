@@ -33,11 +33,11 @@
 
 #include "boot/uf2.h"
 #include "boot/picobin.h"
-#include "enc_bootloader.h"
+#include "get_enc_bootloader.h"
 #if HAS_LIBUSB
     #include "picoboot_connection_cxx.h"
     #include "rp2350.rom.h"
-    #include "xip_ram_perms.h"
+    #include "get_xip_ram_perms.h"
 #else
     #include "picoboot_connection.h"
 #endif

@@ -5,18 +5,15 @@
 #include <sstream>
 #include <fstream>
 
-#include "enc_bootloader.h"
-#include "enc_bootloader_elf.h"
-#if HAS_MBEDTLS
-#include "enc_bootloader_mbedtls_elf.h"
-#endif
+#include "get_xip_ram_perms.h"
+#include "xip_ram_perms_elf.h"
 
 #include "data_locs.h"
 
 #include "whereami++.h"
 
 
-std::shared_ptr<std::iostream> get_enc_bootloader(bool use_mbedtls) {
+std::shared_ptr<std::iostream> get_xip_ram_perms() {
     // search same directory as executable
     whereami::whereami_path_t executablePath = whereami::getExecutablePath();
     std::string local_loc = executablePath.dirname() + "/";
@@ -25,10 +22,7 @@ std::shared_ptr<std::iostream> get_enc_bootloader(bool use_mbedtls) {
     }
 
     for (auto loc : data_locs) {
-        std::string filename = loc
-                                + "enc_bootloader"
-                                + (use_mbedtls ? "_mbedtls" : "")
-                                + ".elf";
+        std::string filename = loc + "xip_ram_perms.elf";
         std::ifstream i(filename);
         if (i.good()) {
             printf("Picking file %s\n", filename.c_str());
@@ -37,16 +31,9 @@ std::shared_ptr<std::iostream> get_enc_bootloader(bool use_mbedtls) {
         }
     }
 
-    // fall back to embedded enc_bootloader.elf file
-    printf("Could not find enc_bootloader%s.elf file - using embedded binary\n", use_mbedtls ? "_mbedtls" : "");
+    // fall back to embedded xip_ram_perms.elf file
+    printf("Could not find xip_ram_perms.elf file - using embedded binary\n");
     auto tmp = std::make_shared<std::stringstream>();
-#if HAS_MBEDTLS
-    if (use_mbedtls) {
-        tmp->write(reinterpret_cast<const char*>(enc_bootloader_mbedtls_elf), enc_bootloader_mbedtls_elf_SIZE);
-    } else
-#endif
-    {
-        tmp->write(reinterpret_cast<const char*>(enc_bootloader_elf), enc_bootloader_elf_SIZE);
-    }
+    tmp->write(reinterpret_cast<const char*>(xip_ram_perms_elf), xip_ram_perms_elf_SIZE);
     return tmp;
 }

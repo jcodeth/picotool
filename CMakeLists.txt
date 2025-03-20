@@ -310,12 +310,12 @@ target_include_directories(regs_headers INTERFACE ${PICO_SDK_PATH}/src/rp2350/ha
 # Main picotool executable
 add_executable(picotool
     data_locs.cpp
-    enc_bootloader.cpp
+    get_enc_bootloader.cpp
     ${OTP_EXE}
     main.cpp)
 add_dependencies(picotool enc_bootloader_elf binary_data_no_libusb)
 if (NOT PICOTOOL_NO_LIBUSB)
-    target_sources(picotool PRIVATE xip_ram_perms.cpp)
+    target_sources(picotool PRIVATE get_xip_ram_perms.cpp)
     add_dependencies(picotool generate_otp_header xip_ram_perms_elf binary_data)
 endif()
 set(PROJECT_VERSION 2.1.2-develop)
