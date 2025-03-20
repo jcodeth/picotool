@@ -5044,13 +5044,14 @@ bool encrypt_command::execute(device_map &devices) {
     // Read IV Salt
     auto iv_salt_file = get_file_idx(ios::in|ios::binary, 3);
     iv_salt_file->exceptions(std::iostream::failbit | std::iostream::badbit);
-    uint8_t iv_salt[16];
+    std::vector<uint8_t> iv_salt;
+    iv_salt.resize(16);
     iv_salt_file->seekg(0, std::ios::end);
     if (iv_salt_file->tellg() != 16) {
         fail(ERROR_INCOMPATIBLE, "The IV OTP salt must be a 16 byte file (the supplied file is %d bytes)", iv_salt_file->tellg());
     }
     iv_salt_file->seekg(0, std::ios::beg);
-    iv_salt_file->read((char*)iv_salt, sizeof(iv_salt));
+    iv_salt_file->read((char*)iv_salt.data(), iv_salt.size());
 
     if (isElf) {
         elf_file source_file(settings.verbose);
@@ -5074,7 +5075,7 @@ bool encrypt_command::execute(device_map &devices) {
             encrypt_guts(elf, &new_block, aes_key, iv_data, enc_data);
 
             // Salt IV
-            assert(iv_data.size() == sizeof(iv_salt));
+            assert(iv_data.size() == iv_salt.size());
             for (int i=0; i < iv_data.size(); i++) {
                 iv_data[i] ^= iv_salt[i];
             }
@@ -5169,7 +5170,7 @@ bool encrypt_command::execute(device_map &devices) {
             enc_elf->write(out);
             out->close();
         } else {
-            encrypt(elf, &new_block, aes_key, public_key, private_key, settings.seal.hash, settings.seal.sign);
+            encrypt(elf, &new_block, aes_key, public_key, private_key, iv_salt, settings.seal.hash, settings.seal.sign);
             auto out = get_file_idx(ios::out|ios::binary, 1);
             elf->write(out);
             out->close();
@@ -5191,7 +5192,7 @@ bool encrypt_command::execute(device_map &devices) {
         auto bin_cp = bin;
         block new_block = place_new_block(bin_cp, bin_start, first_block);
 
-        auto enc_data = encrypt(bin, bin_start, bin_start, &new_block, aes_key, public_key, private_key, settings.seal.hash, settings.seal.sign);
+        auto enc_data = encrypt(bin, bin_start, bin_start, &new_block, aes_key, public_key, private_key, iv_salt, settings.seal.hash, settings.seal.sign);
 
         auto out = get_file_idx(ios::out|ios::binary, 1);
         out->write((const char *)enc_data.data(), enc_data.size());

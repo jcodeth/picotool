@@ -880,11 +880,17 @@ void encrypt_guts(elf_file *elf, block *new_block, const aes_key_t aes_key, std:
 }
 
 
-int encrypt(elf_file *elf, block *new_block, const aes_key_t aes_key, const public_t public_key, const private_t private_key, bool hash_value, bool sign) {
+int encrypt(elf_file *elf, block *new_block, const aes_key_t aes_key, const public_t public_key, const private_t private_key, std::vector<uint8_t> iv_salt, bool hash_value, bool sign) {
 
     std::vector<uint8_t> iv_data;
     std::vector<uint8_t> enc_data;
     encrypt_guts(elf, new_block, aes_key, iv_data, enc_data);
+
+    // Salt IV
+    assert(iv_data.size() == iv_salt.size());
+    for (int i=0; i < iv_data.size(); i++) {
+        iv_data[i] ^= iv_salt[i];
+    }
     
     unsigned int i=0;
     for(const auto &seg : sorted_segs(elf)) {
@@ -968,7 +974,7 @@ int encrypt(elf_file *elf, block *new_block, const aes_key_t aes_key, const publ
 }
 
 
-std::vector<uint8_t> encrypt(std::vector<uint8_t> bin, uint32_t storage_addr, uint32_t runtime_addr, block *new_block, const aes_key_t aes_key, const public_t public_key, const private_t private_key, bool hash_value, bool sign) {
+std::vector<uint8_t> encrypt(std::vector<uint8_t> bin, uint32_t storage_addr, uint32_t runtime_addr, block *new_block, const aes_key_t aes_key, const public_t public_key, const private_t private_key, std::vector<uint8_t> iv_salt, bool hash_value, bool sign) {
     std::random_device rand{};
     assert(rand.max() - rand.min() >= 256);
 
@@ -983,6 +989,12 @@ std::vector<uint8_t> encrypt(std::vector<uint8_t> bin, uint32_t storage_addr, ui
     }
 
     std::vector<uint8_t> iv_data(iv.bytes, iv.bytes + sizeof(iv.bytes));
+
+    // Salt IV
+    assert(iv_data.size() == iv_salt.size());
+    for (int i=0; i < iv_data.size(); i++) {
+        iv_data[i] ^= iv_salt[i];
+    }
 
     std::vector<uint8_t> enc_data;
     enc_data.resize(bin.size());
