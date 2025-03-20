@@ -71,3 +71,4 @@ jobs:
           picotool info -a blink.uf2
           picotool info -a hello_world.uf2
           picotool info -a flash_nuke.uf2
+          picotool otp list
