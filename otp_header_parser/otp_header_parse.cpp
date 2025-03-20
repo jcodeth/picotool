@@ -339,6 +339,9 @@ int main(int argc, char **argv) {
             }
         }
         std::ofstream out_file(argv[2]);
+        std::string h_name = argv[2];
+        h_name += ".h";
+        std::ofstream out_h_file(h_name);
     #if CODE_OTP
         out_file << "// GENERATE FILE; DO NOT EDIT // " << std::endl << std::endl;
         out_file << "#pragma once" << std::endl;
@@ -380,6 +383,21 @@ int main(int argc, char **argv) {
             otp_regs_vec.push_back(e.second);
         j = otp_regs_vec;
         out_file << std::setw(4) << j << std::endl;
+
+        std::string j_string = to_string(j);
+        out_h_file << R"""(
+#include <string>
+
+char rp2350_otp_contents_json[] = {
+)""";
+        for (auto c : j_string) {
+            out_h_file << "0x" << std::hex << (int)c << ",";
+        }
+        out_h_file << R"""(
+};
+
+const std::string rp2350_json(rp2350_otp_contents_json);
+)""";
     #endif
     } catch (std::exception &e) {
         cerr << "ERROR: " << e.what() << "\n\n";

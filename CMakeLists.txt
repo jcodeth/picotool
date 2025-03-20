@@ -132,32 +132,15 @@ if (NOT PICOTOOL_NO_LIBUSB)
                 DEPENDS ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h
                 COMMAND otp_header_parse ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h ${GENERATED_H}
                 )
-    elseif(MSVC)
-        set(GENERATED_JSON ${CMAKE_CURRENT_BINARY_DIR}/rp2350_otp_contents.json)
-        add_custom_target(generate_otp_header DEPENDS ${GENERATED_JSON})
-        add_custom_command(OUTPUT ${GENERATED_JSON}
-                COMMENT "Generating ${GENERATED_JSON}"
-                DEPENDS ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h
-                COMMAND otp_header_parse ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h ${GENERATED_JSON}
-                )
-        # Cannot include json in the binary, as the string is too long, so needs to use pre-generated xxd output
-        configure_file(${CMAKE_CURRENT_LIST_DIR}/otp_header_parser/rp2350.json.h ${CMAKE_CURRENT_BINARY_DIR}/rp2350.json.h COPYONLY)
     else()
         set(GENERATED_JSON ${CMAKE_CURRENT_BINARY_DIR}/rp2350_otp_contents.json)
-        add_custom_target(generate_otp_header DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/rp2350.json.h)
-        add_custom_command(OUTPUT ${GENERATED_JSON}
+        set(GENERATED_JSON_H ${GENERATED_JSON}.h)
+        add_custom_target(generate_otp_header DEPENDS ${GENERATED_JSON_H})
+        add_custom_command(OUTPUT ${GENERATED_JSON} ${GENERATED_JSON_H}
                 COMMENT "Generating ${GENERATED_JSON}"
                 DEPENDS ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h
                 COMMAND otp_header_parse ${PICO_SDK_PATH}/src/rp2350/hardware_regs/include/hardware/regs/otp_data.h ${GENERATED_JSON}
                 )
-        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/rp2350.json.h
-                COMMAND ${CMAKE_COMMAND}
-                    -D GENERATED_JSON=${GENERATED_JSON}
-                    -P ${CMAKE_CURRENT_LIST_DIR}/cmake/jsonh.cmake
-                DEPENDS ${GENERATED_JSON}
-                COMMENT "Configuring rp2350.json.h"
-                VERBATIM)
-              
     endif()
 endif()
 

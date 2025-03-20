@@ -19,7 +19,7 @@
 #define DEBUG_LOG(...) ((void)0)
 #endif
 
-#include "rp2350.json.h"
+#include "rp2350_otp_contents.json.h"
 
 template <typename T>
 std::basic_string<T> lowercase(const std::basic_string<T>& s)

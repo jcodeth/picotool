@@ -14,8 +14,3 @@ py_binary(
     name = "binh",
     srcs = ["binh.py"],
 )
-
-py_binary(
-    name = "jsonh",
-    srcs = ["jsonh.py"],
-)
