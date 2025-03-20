@@ -16,3 +16,6 @@ if (NOT TARGET nlohmann_json)
 else()
     target_link_libraries(otp_header_parse nlohmann_json)
 endif()
+
+# Install it so that picotool can find it - this fixes issues with multi-config generators
+install(TARGETS otp_header_parse RUNTIME DESTINATION "otp_header_parse")

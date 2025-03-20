@@ -117,20 +117,12 @@ if (NOT PICOTOOL_NO_LIBUSB)
             CMAKE_ARGS "-DCODE_OTP=${PICOTOOL_CODE_OTP}"
             BUILD_ALWAYS 1 # todo remove this
             DOWNLOAD_COMMAND ""
-            INSTALL_COMMAND ""
+            INSTALL_COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}/otp_header_parser" --prefix "${CMAKE_BINARY_DIR}"
             )
 
     add_executable(otp_header_parse IMPORTED)
-    # think this is the best way to do this - this should work in MSVC now, and possibly Xcode but that's untested
     add_dependencies(otp_header_parse otp_header_parser)
-    get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-    if (is_multi_config)
-        # use the first config
-        list(GET CMAKE_CONFIGURATION_TYPES 0 tmp_config)
-        set_property(TARGET otp_header_parse PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/otp_header_parser/${tmp_config}/otp_header_parse)
-    else()
-        set_property(TARGET otp_header_parse PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/otp_header_parser/otp_header_parse)
-    endif()
+    set_property(TARGET otp_header_parse PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/otp_header_parse/otp_header_parse)
 
     if (PICOTOOL_CODE_OTP)
         set(GENERATED_H ${CMAKE_CURRENT_BINARY_DIR}/otp_contents.h)
