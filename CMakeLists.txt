@@ -60,7 +60,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 # To configure mbedtls
 # todo make the configuration better
 set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
-add_compile_options(-I${CMAKE_SOURCE_DIR}/lib/include)
+include_directories(${CMAKE_SOURCE_DIR}/lib/include)
 
 add_subdirectory(lib)
 
