@@ -393,6 +393,7 @@ char rp2350_otp_contents_json[] = {
         for (auto c : j_string) {
             out_h_file << "0x" << std::hex << (int)c << ",";
         }
+        out_h_file << "0x00";
         out_h_file << R"""(
 };
 

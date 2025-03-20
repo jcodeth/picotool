@@ -45,7 +45,7 @@ filegroup(
 otp_header_parse(
     name = "otp_header",
     src = "@pico-sdk//src/rp2350/hardware_regs:otp_data_header",
-    out = "rp2350_otp_contents.json.h",
+    out = "rp2350_otp_contents.json",
 )
 
 cc_binary(
