@@ -78,7 +78,9 @@ if (NOT USE_PRECOMPILED)
         PICO_BOOTROM_LOCKING_ENABLED=0
         # PICO_RUNTIME_SKIP_INIT_BOOTROM_LOCKING_ENABLE=1
         # Don't need any vtor irqs
-        PICO_MINIMAL_VECTOR_TABLE=1)
+        PICO_MINIMAL_STORED_VECTOR_TABLE=1
+        PICO_NUM_VTABLE_IRQS=0
+        )
 
     # print memory usage
     target_link_options(enc_bootloader PUBLIC -Wl,--print-memory-usage)
