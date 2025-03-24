@@ -260,6 +260,7 @@ block place_new_block(elf_file *elf, std::unique_ptr<block> &first_block) {
 
     int32_t loop_start_rel = 0;
     uint32_t new_block_addr = 0;
+    std::unique_ptr<block> new_first_block;
     if (!first_block->next_block_rel) {
         set_next_block(elf, first_block, highest_address);
         loop_start_rel = -first_block->next_block_rel;
@@ -267,7 +268,6 @@ block place_new_block(elf_file *elf, std::unique_ptr<block> &first_block) {
     } else {
         DEBUG_LOG("There is already a block loop\n");
         uint32_t next_block_addr = first_block->physical_addr + first_block->next_block_rel;
-        std::unique_ptr<block> new_first_block;
         while (true) {
             auto segment = elf->segment_from_physical_address(next_block_addr);
             if (segment == nullptr) {
@@ -314,10 +314,18 @@ block place_new_block(elf_file *elf, std::unique_ptr<block> &first_block) {
 
     // loop back to first block
     block new_block(new_block_addr, loop_start_rel);
-    // copt the existing block
-    std::copy(first_block->items.begin(),
-              first_block->items.end(),
-              std::back_inserter(new_block.items));
+    // check if last block has an image_def
+    if (new_first_block != nullptr && new_first_block->get_item<image_type_item>() != nullptr) {
+        // copy the last block items
+        std::copy(new_first_block->items.begin(),
+                  new_first_block->items.end(),
+                  std::back_inserter(new_block.items));
+    } else {
+        // copy the first block items
+        std::copy(first_block->items.begin(),
+                  first_block->items.end(),
+                  std::back_inserter(new_block.items));
+    }
 
     return new_block;
 }
@@ -404,13 +412,14 @@ block place_new_block(std::vector<uint8_t> &bin, uint32_t storage_addr, std::uni
 
     int32_t loop_start_rel = 0;
     uint32_t new_block_addr = 0;
+    std::unique_ptr<block> new_first_block;
     if (!first_block->next_block_rel) {
         set_next_block(bin, storage_addr, first_block, highest_address);
         loop_start_rel = -first_block->next_block_rel;
         new_block_addr = first_block->physical_addr + first_block->next_block_rel;
     } else {
         DEBUG_LOG("Ooh, there is already a block loop - lets find it's end\n");
-        auto new_first_block = get_last_block(bin, storage_addr, first_block);
+        new_first_block = get_last_block(bin, storage_addr, first_block);
         set_next_block(bin, storage_addr, new_first_block, highest_address);
         new_block_addr = new_first_block->physical_addr + new_first_block->next_block_rel;
         loop_start_rel = first_block->physical_addr - new_block_addr;
@@ -421,10 +430,18 @@ block place_new_block(std::vector<uint8_t> &bin, uint32_t storage_addr, std::uni
 
     // loop back to first block
     block new_block(new_block_addr, loop_start_rel);
-    // copt the existing block
-    std::copy(first_block->items.begin(),
-              first_block->items.end(),
-              std::back_inserter(new_block.items));
+    // check if last block has an image_def
+    if (new_first_block != nullptr && new_first_block->get_item<image_type_item>() != nullptr) {
+        // copy the last block items
+        std::copy(new_first_block->items.begin(),
+                  new_first_block->items.end(),
+                  std::back_inserter(new_block.items));
+    } else {
+        // copy the first block items
+        std::copy(first_block->items.begin(),
+                  first_block->items.end(),
+                  std::back_inserter(new_block.items));
+    }
 
     return new_block;
 }
