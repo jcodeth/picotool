@@ -58,7 +58,6 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # To configure mbedtls
-# todo make the configuration better
 set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
 include_directories(${CMAKE_SOURCE_DIR}/lib/include)
 
@@ -229,15 +228,15 @@ if (NOT PICOTOOL_NO_LIBUSB)
 endif()
 
 if (TARGET mbedtls)
-    add_custom_target(binary_data_no_libusb DEPENDS
+    add_custom_target(embedded_data_no_libusb DEPENDS
             ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h
             ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_mbedtls_elf.h)
 else()
-    add_custom_target(binary_data_no_libusb DEPENDS
+    add_custom_target(embedded_data_no_libusb DEPENDS
             ${CMAKE_CURRENT_BINARY_DIR}/enc_bootloader_elf.h)
 endif()
 
-add_custom_target(binary_data DEPENDS
+add_custom_target(embedded_data DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/rp2350.rom.h
         ${CMAKE_CURRENT_BINARY_DIR}/xip_ram_perms_elf.h
         ${CMAKE_CURRENT_BINARY_DIR}/flash_id_bin.h)
@@ -313,10 +312,10 @@ add_executable(picotool
     get_enc_bootloader.cpp
     ${OTP_EXE}
     main.cpp)
-add_dependencies(picotool enc_bootloader_elf binary_data_no_libusb)
+add_dependencies(picotool enc_bootloader_elf embedded_data_no_libusb)
 if (NOT PICOTOOL_NO_LIBUSB)
     target_sources(picotool PRIVATE get_xip_ram_perms.cpp)
-    add_dependencies(picotool generate_otp_header xip_ram_perms_elf binary_data)
+    add_dependencies(picotool generate_otp_header xip_ram_perms_elf embedded_data)
 endif()
 set(PROJECT_VERSION 2.1.2-develop)
 set(PICOTOOL_VERSION 2.1.2-develop)
