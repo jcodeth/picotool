@@ -24,7 +24,7 @@ if (NOT USE_PRECOMPILED)
     set(CMAKE_CXX_STANDARD 17)
 
     if (PICO_SDK_VERSION_STRING VERSION_LESS "2.1.2")
-        message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.0.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
+        message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.1.2 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
     endif()
 
     # Initialize the SDK

@@ -57,7 +57,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-# To configure mbedtls
+# To configure mbedtls, without modifying mbedtls CMake files
 set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
 include_directories(${CMAKE_SOURCE_DIR}/lib/include)
 
