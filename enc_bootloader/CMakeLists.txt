@@ -79,7 +79,7 @@ if (NOT USE_PRECOMPILED)
         # PICO_RUNTIME_SKIP_INIT_BOOTROM_LOCKING_ENABLE=1
         # Don't need any vtor irqs
         PICO_MINIMAL_STORED_VECTOR_TABLE=1
-        PICO_NUM_VTABLE_IRQS=0
+        PICO_NO_RAM_VECTOR_TABLE=1
         )
 
     # print memory usage
