@@ -327,6 +327,24 @@ block place_new_block(elf_file *elf, std::unique_ptr<block> &first_block) {
                   std::back_inserter(new_block.items));
     }
 
+    // Delete existing load_map, signature and hash as these will be replaced with new ones
+    std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
+    if (load_map != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
+    }
+    std::shared_ptr<signature_item> signature = new_block.get_item<signature_item>();
+    if (signature != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), signature), new_block.items.end());
+    }
+    std::shared_ptr<hash_value_item> hash_value = new_block.get_item<hash_value_item>();
+    if (hash_value != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), hash_value), new_block.items.end());
+    }
+    std::shared_ptr<hash_def_item> hash_def = new_block.get_item<hash_def_item>();
+    if (hash_def != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), hash_def), new_block.items.end());
+    }
+
     return new_block;
 }
 
@@ -441,6 +459,24 @@ block place_new_block(std::vector<uint8_t> &bin, uint32_t storage_addr, std::uni
         std::copy(first_block->items.begin(),
                   first_block->items.end(),
                   std::back_inserter(new_block.items));
+    }
+
+    // Delete existing load_map, signature and hash as these will be replaced with new ones
+    std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
+    if (load_map != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
+    }
+    std::shared_ptr<signature_item> signature = new_block.get_item<signature_item>();
+    if (signature != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), signature), new_block.items.end());
+    }
+    std::shared_ptr<hash_value_item> hash_value = new_block.get_item<hash_value_item>();
+    if (hash_value != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), hash_value), new_block.items.end());
+    }
+    std::shared_ptr<hash_def_item> hash_def = new_block.get_item<hash_def_item>();
+    if (hash_def != nullptr) {
+        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), hash_def), new_block.items.end());
     }
 
     return new_block;
@@ -908,7 +944,7 @@ int encrypt(elf_file *elf, block *new_block, const aes_key_t aes_key, const publ
     for (int i=0; i < iv_data.size(); i++) {
         iv_data[i] ^= iv_salt[i];
     }
-    
+
     unsigned int i=0;
     for(const auto &seg : sorted_segs(elf)) {
         if (!seg->is_load()) continue;
