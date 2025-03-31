@@ -5164,6 +5164,7 @@ bool encrypt_command::execute(device_map &devices) {
             }
 
             // Sign the final thing
+            settings.seal.clear_sram = true;
             sign_guts_elf(enc_elf, private_key, public_key);
             
             auto out = get_file_idx(ios::out|ios::binary, 1);
