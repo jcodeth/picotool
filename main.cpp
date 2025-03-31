@@ -606,6 +606,13 @@ auto device_selection =
     named_file_types_x(types, i)\
 )
 
+#define named_untyped_file_selection_x(name, i)\
+(\
+    value(name).with_exclusion_filter([](const string &value) {\
+            return value.find_first_of('-') == 0;\
+        }).set(settings.filenames[i]) % "The file name"\
+)
+
 #define optional_file_selection_x(name, i)\
 (\
     value(name).with_exclusion_filter([](const string &value) {\
@@ -620,6 +627,13 @@ auto device_selection =
             return value.find_first_of('-') == 0;\
         }).set(settings.filenames[i]).min(0) % "The file name" +\
     named_file_types_x(types, i)\
+).min(0).doc_non_optional(true)
+
+#define optional_untyped_file_selection_x(name, i)\
+(\
+    value(name).with_exclusion_filter([](const string &value) {\
+            return value.find_first_of('-') == 0;\
+        }).set(settings.filenames[i]).min(0) % "The file name"\
 ).min(0).doc_non_optional(true)
 
 #define option_file_selection_x(option, i)\
@@ -848,10 +862,10 @@ struct encrypt_command : public cmd {
                      hex("offset").set(settings.offset) % "Load offset (memory address; default 0x10000000)"
             ).force_expand_help(true) % "BIN file options" +
             named_file_selection_x("outfile", 1) % "File to save to" +
-            named_typed_file_selection_x("aes_key", 2, "bin") % "AES Key Share or AES Key" +
-            named_typed_file_selection_x("iv_otp", 3, "bin") % "IV OTP Salt" +
-            optional_typed_file_selection_x("signing_key", 4, "pem") % "Signing Key file" +
-            optional_typed_file_selection_x("otp", 5, "json") % "File to save OTP to (will edit existing file if it exists)"
+            named_untyped_file_selection_x("aes_key", 2) % "AES Key Share or AES Key" +
+            named_untyped_file_selection_x("iv_otp", 3) % "IV OTP Salt" +
+            optional_untyped_file_selection_x("signing_key", 4) % "Signing Key file" +
+            optional_untyped_file_selection_x("otp", 5) % "File to save OTP to (will edit existing file if it exists)"
         );
     }
 
@@ -880,8 +894,8 @@ struct seal_command : public cmd {
                      hex("offset").set(settings.offset) % "Load offset (memory address; default 0x10000000)"
             ).force_expand_help(true) % "BIN file options" +
             named_file_selection_x("outfile", 1) % "File to save to" +
-            optional_typed_file_selection_x("key", 2, "pem") % "Key file" +
-            optional_typed_file_selection_x("otp", 3, "json") % "File to save OTP to (will edit existing file if it exists)" + 
+            optional_untyped_file_selection_x("key", 2) % "Key file" +
+            optional_untyped_file_selection_x("otp", 3) % "File to save OTP to (will edit existing file if it exists)" + 
             (
                 option("--major") &
                     integer("major").set(settings.seal.major_version)
@@ -953,7 +967,7 @@ struct partition_create_command : public cmd {
         return (
                 option("--quiet").set(settings.quiet) % "Don't print any output" +
                 option("--verbose").set(settings.verbose) % "Print verbose output" +
-                named_typed_file_selection_x("infile", 0, "json") % "partition table JSON" +
+                named_untyped_file_selection_x("infile", 0) % "partition table JSON" +
                 (named_file_selection_x("outfile", 1) % "output file" +
                 (
                     (option('o', "--offset").set(settings.offset_set) % "Specify the load address for UF2 file output" &
@@ -1163,12 +1177,12 @@ struct otp_permissions_command : public cmd {
 
     group get_cli() override {
         return (
-                named_typed_file_selection_x("filename", 0, "json") % "File to load permissions from" +
+                named_untyped_file_selection_x("filename", 0) % "File to load permissions from" +
                 (option("--led") & integer("pin").set(settings.otp.led_pin)) % "LED Pin to flash; default 25" +
                 (
                     option("--hash").set(settings.seal.hash) % "Hash the executable" +
                     option("--sign").set(settings.seal.sign) % "Sign the executable" +
-                    optional_typed_file_selection_x("key", 2, "pem") % "Key file"
+                    optional_untyped_file_selection_x("key", 2) % "Key file"
                 ).min(0).doc_non_optional(true) % "Signing Configuration" +
                 device_selection % "Target device selection"
         );
@@ -1190,7 +1204,7 @@ struct otp_white_label_command : public cmd {
                 (
                         (option('s', "--start_row") & integer("row").set(settings.otp.row)) % "Start row for white label struct (default 0x100) (note use 0x for hex)"
                 ).min(0).doc_non_optional(true) % "Row options" +
-                named_typed_file_selection_x("filename", 0, "json") % "File with white labelling values" +
+                named_untyped_file_selection_x("filename", 0) % "File with white labelling values" +
                 device_selection % "Target device selection"
         );
     }
@@ -5017,18 +5031,18 @@ bool encrypt_command::execute(device_map &devices) {
     }
 
 
-    auto aes_file = get_file_idx(ios::in|ios::binary, 2);
-    aes_file->exceptions(std::iostream::failbit | std::iostream::badbit);
+        auto aes_file = get_file_idx(ios::in|ios::binary, 2);
+        aes_file->exceptions(std::iostream::failbit | std::iostream::badbit);
 
     aes_key_share_t aes_key_share;
-    aes_file->seekg(0, std::ios::end);
+        aes_file->seekg(0, std::ios::end);
     if (aes_file->tellg() != 128) {
         // Generate a random key share from 256-bit key
         if (aes_file->tellg() != 32) {
             fail(ERROR_INCOMPATIBLE, "The AES key share must be a 128 byte key share, or a 32 byte key (the supplied file is %d bytes)", aes_file->tellg());
         }
         aes_key_t tmp_key;
-        aes_file->seekg(0, std::ios::beg);
+            aes_file->seekg(0, std::ios::beg);
         aes_file->read((char*)tmp_key.bytes, sizeof(tmp_key.bytes));
 
         std::random_device rand{};
