@@ -4999,6 +4999,16 @@ vector<uint8_t> sign_guts_bin(iostream_memory_access in, private_t private_key, 
 bool encrypt_command::execute(device_map &devices) {
     bool isElf = false;
     bool isBin = false;
+
+    bool keyFromFile = true;
+    bool keyIsShare = false;
+    bool ivFromFile = true;
+
+    aes_key_t aes_key;
+    aes_key_share_t aes_key_share;
+    std::vector<uint8_t> iv_salt;
+    iv_salt.resize(16);
+
     if (get_file_type() == filetype::elf) {
         isElf = true;
     } else if (get_file_type() == filetype::bin) {
@@ -5014,11 +5024,37 @@ bool encrypt_command::execute(device_map &devices) {
         fail(ERROR_ARGS, "Can only sign to same file type");
     }
 
-    if (get_file_type_idx(2) != filetype::bin) {
+    if (!settings.filenames[2].empty() && settings.filenames[2].find("0x") == 0) {
+        // Hex string instead of file
+        if (settings.filenames[2].size() != 64 + 2) {
+            fail(ERROR_ARGS, "AES key hex string must be 32 bytes long");
+        }
+        keyFromFile = false;
+        for (int i=0; i < count_of(aes_key.bytes); i++) {
+            auto value = "0x" + settings.filenames[2].substr(2 + i*2, 2);
+            auto ret = integer::parse_string(value, aes_key.bytes[i]);
+            if (!ret.empty()) {
+                fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
+            }
+        }
+    } else if (get_file_type_idx(2) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read AES key share from BIN file");
     }
 
-    if (get_file_type_idx(3) != filetype::bin) {
+    if (!settings.filenames[3].empty() && settings.filenames[3].find("0x") == 0) {
+        // Hex string instead of file
+        if (settings.filenames[3].size() != 34) {
+            fail(ERROR_ARGS, "IV OTP salt hex string must be 16 bytes long");
+        }
+        ivFromFile = false;
+        for (int i=0; i < iv_salt.size(); i++) {
+            auto value = "0x" + settings.filenames[3].substr(2 + i*2, 2);
+            auto ret = integer::parse_string(value, iv_salt[i]);
+            if (!ret.empty()) {
+                fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
+            }
+        }
+    } else if (get_file_type_idx(3) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read IV OTP salt from BIN file");
     }
 
@@ -5030,38 +5066,39 @@ bool encrypt_command::execute(device_map &devices) {
         fail(ERROR_ARGS, "Can only read pem keys");
     }
 
-
+    if (keyFromFile) {
         auto aes_file = get_file_idx(ios::in|ios::binary, 2);
         aes_file->exceptions(std::iostream::failbit | std::iostream::badbit);
-
-    aes_key_share_t aes_key_share;
         aes_file->seekg(0, std::ios::end);
-    if (aes_file->tellg() != 128) {
-        // Generate a random key share from 256-bit key
-        if (aes_file->tellg() != 32) {
-            fail(ERROR_INCOMPATIBLE, "The AES key share must be a 128 byte key share, or a 32 byte key (the supplied file is %d bytes)", aes_file->tellg());
-        }
-        aes_key_t tmp_key;
+        auto aes_key_file_size = aes_file->tellg();
+        if (aes_key_file_size == 32) {
+            keyIsShare = false;
             aes_file->seekg(0, std::ios::beg);
-        aes_file->read((char*)tmp_key.bytes, sizeof(tmp_key.bytes));
+            aes_file->read((char*)aes_key.bytes, sizeof(aes_key.bytes));
+        } else if (aes_key_file_size == 128) {
+            keyIsShare = true;
+            aes_file->seekg(0, std::ios::beg);
+            aes_file->read((char*)aes_key_share.bytes, sizeof(aes_key_share.bytes));
+        } else {
+            fail(ERROR_INCOMPATIBLE, "The AES key file must be a 128 byte key share, or a 32 byte key (the supplied file is %d bytes)", aes_key_file_size);
+        }
+    }
 
+    if (!keyIsShare) {
+        // Generate a random key share from 256-bit key
         std::random_device rand{};
         assert(rand.max() - rand.min() >= 256);
         for(int i=0; i < 8; i++) {
             for (int j=0; j < 12; j++) {
                 aes_key_share.bytes[i*16 + j] = rand();
             }
-            aes_key_share.words[i*4 + 3] = tmp_key.words[i]
-                                        ^ aes_key_share.words[i*4 + 2]
+            aes_key_share.words[i*4 + 3] = aes_key.words[i]
+                                        ^ aes_key_share.words[i*4]
                                         ^ aes_key_share.words[i*4 + 1]
-                                        ^ aes_key_share.words[i*4];
+                                        ^ aes_key_share.words[i*4 + 2];
         }
-    } else {
-        aes_file->seekg(0, std::ios::beg);
-        aes_file->read((char*)aes_key_share.bytes, sizeof(aes_key_share.bytes));
     }
 
-    aes_key_t aes_key;
     // Key is stored as a 4-way share of each word, ie X[0] = A[0] ^ B[0] ^ C[0] ^ D[0], stored as A[0], B[0], C[0], D[0]
     for (int i=0; i < count_of(aes_key.words); i++) {
         aes_key.words[i] = aes_key_share.words[i*4]
@@ -5076,16 +5113,16 @@ bool encrypt_command::execute(device_map &devices) {
     if (settings.seal.sign) read_keys(settings.filenames[4], &public_key, &private_key);
 
     // Read IV Salt
-    auto iv_salt_file = get_file_idx(ios::in|ios::binary, 3);
-    iv_salt_file->exceptions(std::iostream::failbit | std::iostream::badbit);
-    std::vector<uint8_t> iv_salt;
-    iv_salt.resize(16);
-    iv_salt_file->seekg(0, std::ios::end);
-    if (iv_salt_file->tellg() != 16) {
-        fail(ERROR_INCOMPATIBLE, "The IV OTP salt must be a 16 byte file (the supplied file is %d bytes)", iv_salt_file->tellg());
+    if (ivFromFile) {
+        auto iv_salt_file = get_file_idx(ios::in|ios::binary, 3);
+        iv_salt_file->exceptions(std::iostream::failbit | std::iostream::badbit);
+        iv_salt_file->seekg(0, std::ios::end);
+        if (iv_salt_file->tellg() != 16) {
+            fail(ERROR_INCOMPATIBLE, "The IV OTP salt must be a 16 byte file (the supplied file is %d bytes)", iv_salt_file->tellg());
+        }
+        iv_salt_file->seekg(0, std::ios::beg);
+        iv_salt_file->read((char*)iv_salt.data(), iv_salt.size());
     }
-    iv_salt_file->seekg(0, std::ios::beg);
-    iv_salt_file->read((char*)iv_salt.data(), iv_salt.size());
 
     if (isElf) {
         elf_file source_file(settings.verbose);
@@ -5258,7 +5295,7 @@ bool encrypt_command::execute(device_map &devices) {
         }
 
         // Add otp IV salt page
-        for (int i = 0; i < sizeof(iv_salt); ++i) {
+        for (int i = 0; i < iv_salt.size(); ++i) {
             std::stringstream ss;
             ss << settings.encrypt.otp_key_page + 1 << ":0";
             otp_json[ss.str()]["ecc"] = true;
