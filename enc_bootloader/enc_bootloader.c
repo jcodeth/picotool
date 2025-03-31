@@ -157,15 +157,6 @@ void lock_key() {
 
 
 int main() {
-    // This works around E21 by locking down the page with a key,
-    // as there is no way to enter a key over the picoboot interface.
-    // Unlocks the OTP page with hardcoded key [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
-    for (int i=0; i<4; i++) {
-        uint32_t key_i = ((i*2+1) << 24) | ((i*2+1) << 16) |
-                         (i*2 << 8) | i*2;
-        otp_hw->crt_key_w[i] = key_i;
-    }
-
     bi_decl(bi_ptr_int32(0, 0, data_start_addr, 0x20000000));
     bi_decl(bi_ptr_int32(0, 0, data_size, 0x78000));
     bi_decl(bi_ptr_string(0, 0, iv, "0123456789abcdef", 17));
