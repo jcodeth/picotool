@@ -14,6 +14,7 @@
 #include <csignal>
 #include <cstdio>
 #include <regex>
+#include <random>
 #if !defined(__APPLE__) && !defined(__FreeBSD__)
 #include <cuchar>
 #endif
@@ -847,7 +848,7 @@ struct encrypt_command : public cmd {
                      hex("offset").set(settings.offset) % "Load offset (memory address; default 0x10000000)"
             ).force_expand_help(true) % "BIN file options" +
             named_file_selection_x("outfile", 1) % "File to save to" +
-            named_typed_file_selection_x("aes_key", 2, "bin") % "AES Key Share" +
+            named_typed_file_selection_x("aes_key", 2, "bin") % "AES Key Share or AES Key" +
             named_typed_file_selection_x("iv_otp", 3, "bin") % "IV OTP Salt" +
             optional_typed_file_selection_x("signing_key", 4, "pem") % "Signing Key file" +
             optional_typed_file_selection_x("otp", 5, "json") % "File to save OTP to (will edit existing file if it exists)"
@@ -5022,10 +5023,29 @@ bool encrypt_command::execute(device_map &devices) {
     aes_key_share_t aes_key_share;
     aes_file->seekg(0, std::ios::end);
     if (aes_file->tellg() != 128) {
-        fail(ERROR_INCOMPATIBLE, "The AES key share must be a 128 byte file (the supplied file is %d bytes)", aes_file->tellg());
+        // Generate a random key share from 256-bit key
+        if (aes_file->tellg() != 32) {
+            fail(ERROR_INCOMPATIBLE, "The AES key share must be a 128 byte key share, or a 32 byte key (the supplied file is %d bytes)", aes_file->tellg());
+        }
+        aes_key_t tmp_key;
+        aes_file->seekg(0, std::ios::beg);
+        aes_file->read((char*)tmp_key.bytes, sizeof(tmp_key.bytes));
+
+        std::random_device rand{};
+        assert(rand.max() - rand.min() >= 256);
+        for(int i=0; i < 8; i++) {
+            for (int j=0; j < 12; j++) {
+                aes_key_share.bytes[i*16 + j] = rand();
+            }
+            aes_key_share.words[i*4 + 3] = tmp_key.words[i]
+                                        ^ aes_key_share.words[i*4 + 2]
+                                        ^ aes_key_share.words[i*4 + 1]
+                                        ^ aes_key_share.words[i*4];
+        }
+    } else {
+        aes_file->seekg(0, std::ios::beg);
+        aes_file->read((char*)aes_key_share.bytes, sizeof(aes_key_share.bytes));
     }
-    aes_file->seekg(0, std::ios::beg);
-    aes_file->read((char*)aes_key_share.bytes, sizeof(aes_key_share.bytes));
 
     aes_key_t aes_key;
     // Key is stored as a 4-way share of each word, ie X[0] = A[0] ^ B[0] ^ C[0] ^ D[0], stored as A[0], B[0], C[0], D[0]
