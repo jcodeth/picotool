@@ -863,9 +863,9 @@ struct encrypt_command : public cmd {
             ).force_expand_help(true) % "BIN file options" +
             named_file_selection_x("outfile", 1) % "File to save to" +
             named_untyped_file_selection_x("aes_key", 2) % "AES Key Share or AES Key" +
-            named_untyped_file_selection_x("iv_otp", 3) % "IV OTP Salt" +
-            optional_untyped_file_selection_x("signing_key", 4) % "Signing Key file" +
-            optional_untyped_file_selection_x("otp", 5) % "File to save OTP to (will edit existing file if it exists)"
+            named_untyped_file_selection_x("iv_salt", 3) % "IV Salt" +
+            optional_untyped_file_selection_x("signing_key", 4) % "Signing Key file (.pem)" +
+            optional_untyped_file_selection_x("otp", 5) % "JSON file to save OTP to (will edit existing file if it exists)"
         );
     }
 
@@ -894,8 +894,8 @@ struct seal_command : public cmd {
                      hex("offset").set(settings.offset) % "Load offset (memory address; default 0x10000000)"
             ).force_expand_help(true) % "BIN file options" +
             named_file_selection_x("outfile", 1) % "File to save to" +
-            optional_untyped_file_selection_x("key", 2) % "Key file" +
-            optional_untyped_file_selection_x("otp", 3) % "File to save OTP to (will edit existing file if it exists)" + 
+            optional_untyped_file_selection_x("key", 2) % "Key file (.pem)" +
+            optional_untyped_file_selection_x("otp", 3) % "JSON file to save OTP to (will edit existing file if it exists)" + 
             (
                 option("--major") &
                     integer("major").set(settings.seal.major_version)
@@ -1177,12 +1177,12 @@ struct otp_permissions_command : public cmd {
 
     group get_cli() override {
         return (
-                named_untyped_file_selection_x("filename", 0) % "File to load permissions from" +
+                named_untyped_file_selection_x("filename", 0) % "JSON file to load permissions from" +
                 (option("--led") & integer("pin").set(settings.otp.led_pin)) % "LED Pin to flash; default 25" +
                 (
                     option("--hash").set(settings.seal.hash) % "Hash the executable" +
                     option("--sign").set(settings.seal.sign) % "Sign the executable" +
-                    optional_untyped_file_selection_x("key", 2) % "Key file"
+                    optional_untyped_file_selection_x("key", 2) % "Key file (.pem)"
                 ).min(0).doc_non_optional(true) % "Signing Configuration" +
                 device_selection % "Target device selection"
         );
@@ -1204,7 +1204,7 @@ struct otp_white_label_command : public cmd {
                 (
                         (option('s', "--start_row") & integer("row").set(settings.otp.row)) % "Start row for white label struct (default 0x100) (note use 0x for hex)"
                 ).min(0).doc_non_optional(true) % "Row options" +
-                named_untyped_file_selection_x("filename", 0) % "File with white labelling values" +
+                named_untyped_file_selection_x("filename", 0) % "JSON file with white labelling values" +
                 device_selection % "Target device selection"
         );
     }
@@ -2715,6 +2715,28 @@ uint32_t guess_flash_size(memory_access &access) {
         if (!std::equal(first_two_pages.begin(), first_two_pages.end(), new_pages.begin())) break;
     }
     return size * 2;
+}
+
+// returns true if filename is a hex string, and fills array with the values
+bool filename_to_hex_array(uint8_t idx, uint8_t *array, size_t size) {
+    auto filename = settings.filenames[idx];
+
+    if (!filename.empty() && filename.find("0x") == 0) {
+        // Hex string instead of file
+        if (filename.size() != size*2 + 2) {
+            fail(ERROR_ARGS, "Hex string must be %d characters long (the supplied string is %d characters)", size*2, filename.size() - 2);
+        }
+        for (size_t i=0; i < size; i++) {
+            auto value = "0x" + filename.substr(2 + i*2, 2);
+            auto ret = integer::parse_string(value, array[i]);
+            if (!ret.empty()) {
+                fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
+            }
+        }
+        return true;
+    }
+
+    return false;
 }
 
 std::shared_ptr<std::fstream> get_file_idx(ios::openmode mode, uint8_t idx) {
@@ -5024,36 +5046,14 @@ bool encrypt_command::execute(device_map &devices) {
         fail(ERROR_ARGS, "Can only sign to same file type");
     }
 
-    if (!settings.filenames[2].empty() && settings.filenames[2].find("0x") == 0) {
-        // Hex string instead of file
-        if (settings.filenames[2].size() != 64 + 2) {
-            fail(ERROR_ARGS, "AES key hex string must be 32 bytes long");
-        }
+    if (filename_to_hex_array(2, aes_key.bytes, sizeof(aes_key.bytes))) {
         keyFromFile = false;
-        for (int i=0; i < count_of(aes_key.bytes); i++) {
-            auto value = "0x" + settings.filenames[2].substr(2 + i*2, 2);
-            auto ret = integer::parse_string(value, aes_key.bytes[i]);
-            if (!ret.empty()) {
-                fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
-            }
-        }
     } else if (get_file_type_idx(2) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read AES key share from BIN file");
     }
 
-    if (!settings.filenames[3].empty() && settings.filenames[3].find("0x") == 0) {
-        // Hex string instead of file
-        if (settings.filenames[3].size() != 34) {
-            fail(ERROR_ARGS, "IV OTP salt hex string must be 16 bytes long");
-        }
+    if (filename_to_hex_array(3, iv_salt.data(), iv_salt.size())) {
         ivFromFile = false;
-        for (int i=0; i < iv_salt.size(); i++) {
-            auto value = "0x" + settings.filenames[3].substr(2 + i*2, 2);
-            auto ret = integer::parse_string(value, iv_salt[i]);
-            if (!ret.empty()) {
-                fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
-            }
-        }
     } else if (get_file_type_idx(3) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read IV OTP salt from BIN file");
     }
