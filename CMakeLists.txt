@@ -42,7 +42,6 @@ endif()
 
 # todo better install paths for this
 set(DATA_LOCS "./" "${CMAKE_INSTALL_PREFIX}/${INSTALL_DATADIR}/")
-message(${DATA_LOCS})
 string(REGEX REPLACE ";" "\",\"" DATA_LOCS_VEC "${DATA_LOCS}")
 configure_file(data_locs.template.cpp ${CMAKE_CURRENT_BINARY_DIR}/data_locs.cpp)
 
@@ -83,14 +82,6 @@ ExternalProject_Add(enc_bootloader
         )
 
 set(ENC_BOOTLOADER_ELF ${CMAKE_BINARY_DIR}/enc_bootloader/enc_bootloader.elf)
-add_executable(enc_bootloader_elf IMPORTED)
-add_dependencies(enc_bootloader_elf enc_bootloader)
-set_property(TARGET enc_bootloader_elf PROPERTY IMPORTED_LOCATION ${ENC_BOOTLOADER_ELF})
-# copy enc_bootloader.elf into build directory
-add_custom_command(TARGET enc_bootloader
-    COMMAND ${CMAKE_COMMAND} -E copy ${ENC_BOOTLOADER_ELF} ${CMAKE_BINARY_DIR}/enc_bootloader.elf
-    DEPENDS enc_bootloader
-)
 
 if (TARGET mbedtls)
     ExternalProject_Add(enc_bootloader_mbedtls
@@ -108,14 +99,6 @@ if (TARGET mbedtls)
             )
 
     set(ENC_BOOTLOADER_MBEDTLS_ELF ${CMAKE_BINARY_DIR}/enc_bootloader_mbedtls/enc_bootloader.elf)
-    add_executable(enc_bootloader_mbedtls_elf IMPORTED)
-    add_dependencies(enc_bootloader_mbedtls_elf enc_bootloader_mbedtls)
-    set_property(TARGET enc_bootloader_mbedtls_elf PROPERTY IMPORTED_LOCATION ${ENC_BOOTLOADER_MBEDTLS_ELF})
-    # copy enc_bootloader_mbedtls.elf into build directory
-    add_custom_command(TARGET enc_bootloader_mbedtls
-        COMMAND ${CMAKE_COMMAND} -E copy ${ENC_BOOTLOADER_MBEDTLS_ELF} ${CMAKE_BINARY_DIR}/enc_bootloader_mbedtls.elf
-        DEPENDS enc_bootloader_mbedtls
-    )
 endif()
 
 if (NOT PICOTOOL_NO_LIBUSB)
@@ -134,14 +117,6 @@ if (NOT PICOTOOL_NO_LIBUSB)
             )
 
     set(XIP_RAM_PERMS_ELF ${CMAKE_BINARY_DIR}/xip_ram_perms/xip_ram_perms.elf)
-    add_executable(xip_ram_perms_elf IMPORTED)
-    add_dependencies(xip_ram_perms_elf xip_ram_perms)
-    set_property(TARGET xip_ram_perms_elf PROPERTY IMPORTED_LOCATION ${XIP_RAM_PERMS_ELF})
-    # copy xip_ram_perms.elf into build directory
-    add_custom_command(TARGET xip_ram_perms
-        COMMAND ${CMAKE_COMMAND} -E copy ${XIP_RAM_PERMS_ELF} ${CMAKE_BINARY_DIR}/xip_ram_perms.elf
-        DEPENDS xip_ram_perms
-    )
 
     # compile flash_id
     ExternalProject_Add(flash_id
@@ -158,14 +133,6 @@ if (NOT PICOTOOL_NO_LIBUSB)
             )
 
     set(FLASH_ID_BIN ${CMAKE_BINARY_DIR}/picoboot_flash_id/flash_id.bin)
-    add_executable(flash_id_bin IMPORTED)
-    add_dependencies(flash_id_bin flash_id)
-    set_property(TARGET flash_id_bin PROPERTY IMPORTED_LOCATION ${FLASH_ID_BIN})
-    # copy flash_id.bin into build directory
-    add_custom_command(TARGET flash_id
-        COMMAND ${CMAKE_COMMAND} -E copy ${FLASH_ID_BIN} ${CMAKE_BINARY_DIR}/flash_id.bin
-        DEPENDS flash_id
-    )
 
     # We want to generate headers from WELCOME.HTM etc.
     ExternalProject_Add(otp_header_parser
@@ -312,10 +279,10 @@ add_executable(picotool
     get_enc_bootloader.cpp
     ${OTP_EXE}
     main.cpp)
-add_dependencies(picotool enc_bootloader_elf embedded_data_no_libusb)
+add_dependencies(picotool embedded_data_no_libusb)
 if (NOT PICOTOOL_NO_LIBUSB)
     target_sources(picotool PRIVATE get_xip_ram_perms.cpp)
-    add_dependencies(picotool generate_otp_header xip_ram_perms_elf embedded_data)
+    add_dependencies(picotool generate_otp_header embedded_data)
 endif()
 set(PROJECT_VERSION 2.1.2-develop)
 set(PICOTOOL_VERSION 2.1.2-develop)
