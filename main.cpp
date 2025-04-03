@@ -1307,8 +1307,8 @@ struct coprodis_command : public cmd {
         return (
                 option("--quiet").set(settings.quiet) % "Don't print any output" +
                 option("--verbose").set(settings.verbose) % "Print verbose output" +
-                named_file_selection_x("infile", 0) % "Input DIS" +
-                named_file_selection_x("outfile", 1) % "Output DIS"
+                named_untyped_file_selection_x("infile", 0) % "Input DIS" +
+                named_untyped_file_selection_x("outfile", 1) % "Output DIS"
         );
     }
 
