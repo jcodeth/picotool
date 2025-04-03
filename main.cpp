@@ -520,7 +520,7 @@ struct _settings {
         bool otp_key_page_set = false;
         bool fast_rosc = false;
         bool use_mbedtls = false;
-        uint16_t otp_key_page = 30;
+        uint16_t otp_key_page = 29;
     } encrypt;
 
     struct {
@@ -4879,6 +4879,27 @@ bool load_command::execute(device_map &devices) {
 }
 #endif
 
+
+static uint32_t even_parity(uint32_t input) {
+    return __builtin_popcount(input) & 1;
+}
+
+// In: 16-bit unsigned integer. Out: 22-bit unsigned integer.
+uint32_t __noinline otp_calculate_ecc(uint16_t x) {
+    // Source: db_shf40_ap_ab.pdf, page 25, "TABLE 9: PARITY BIT GENERATION MAP
+    // FOR 16 BIT USER DATA (X24 SHF MACROCELL)"
+    // https://drive.google.com/drive/u/1/folders/1jgU3tZt2BDeGkWUFhi6KZAlaYUpGrFaG
+    uint32_t p0 = even_parity(x & 0b1010110101011011);
+    uint32_t p1 = even_parity(x & 0b0011011001101101);
+    uint32_t p2 = even_parity(x & 0b1100011110001110);
+    uint32_t p3 = even_parity(x & 0b0000011111110000);
+    uint32_t p4 = even_parity(x & 0b1111100000000000);
+    uint32_t p5 = even_parity(x) ^ p0 ^ p1 ^ p2 ^ p3 ^ p4;
+    uint32_t p = p0 | (p1 << 1) | (p2 << 2) | (p3 << 3) | (p4 << 4) | (p5 << 5);
+    return x | (p << 16);
+}
+
+
 #if HAS_MBEDTLS
 void sign_guts_elf(elf_file* elf, private_t private_key, public_t public_key) {
     std::unique_ptr<block> first_block = find_first_block(elf);
@@ -5286,6 +5307,86 @@ bool encrypt_command::execute(device_map &devices) {
         }
         auto json_out = get_file_idx(ios::out, 5);
 
+    #if FIB_WORKAROUND
+        // Make inverse pages to work around OTP FIB attack
+        vector<uint8_t> page0_data;
+        page0_data.resize(64);
+        vector<uint8_t> page1_data;
+        page1_data.resize(64);
+        vector<uint8_t> page2_data;
+        page2_data.resize(iv_salt.size());
+
+        // Inverse pages need to be raw, to invert the ECC bits too
+        vector<uint8_t> page0_inverse;
+        page0_inverse.resize(page0_data.size()*2);
+        vector<uint8_t> page1_inverse;
+        page1_inverse.resize(page1_data.size()*2);
+        vector<uint8_t> page2_inverse;
+        page2_inverse.resize(page2_data.size()*2);
+
+        memcpy(page0_data.data(), aes_key_share.bytes, 64);
+        memcpy(page1_data.data(), aes_key_share.bytes + 64, 64);
+        memcpy(page2_data.data(), iv_salt.data(), iv_salt.size());
+
+        // The bits in rows 32-63 must be the inverse of the bits in rows 0-31
+        for (int i = 0; i < page0_data.size(); i += 2) {
+            page0_inverse[i*2] = ~page0_data[i];
+            page0_inverse[i*2+1] = ~page0_data[i+1];
+            page0_inverse[i*2+2] = ~otp_calculate_ecc(*(uint16_t*)&page0_data[i]) >> 16;
+        }
+        for (int i = 0; i < page1_data.size(); i += 2) {
+            page1_inverse[i*2] = ~page1_data[i];
+            page1_inverse[i*2+1] = ~page1_data[i+1];
+            page1_inverse[i*2+2] = ~otp_calculate_ecc(*(uint16_t*)&page1_data[i]) >> 16;
+        }
+        for (int i = 0; i < page2_data.size(); i += 2) {
+            page2_inverse[i*2] = ~page2_data[i];
+            page2_inverse[i*2+1] = ~page2_data[i+1];
+            page2_inverse[i*2+2] = ~otp_calculate_ecc(*(uint16_t*)&page2_data[i]) >> 16;
+        }
+
+        // Add otp AES key pages
+        for (int i = 0; i < page0_data.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page << ":0";
+            otp_json[ss.str()]["ecc"] = true;
+            otp_json[ss.str()]["value"][i] = page0_data[i];
+        }
+        for (int i = 0; i < page1_data.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page + 1 << ":0";
+            otp_json[ss.str()]["ecc"] = true;
+            otp_json[ss.str()]["value"][i] = page1_data[i];
+        }
+
+        // Add otp IV salt page
+        for (int i = 0; i < page2_data.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page + 2 << ":0";
+            otp_json[ss.str()]["ecc"] = true;
+            otp_json[ss.str()]["value"][i] = page2_data[i];
+        }
+
+        // Add inverse pages
+        for (int i = 0; i < page0_inverse.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page << ":32";
+            otp_json[ss.str()]["ecc"] = false;
+            otp_json[ss.str()]["value"][i] = page0_inverse[i];
+        }
+        for (int i = 0; i < page1_inverse.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page + 1 << ":32";
+            otp_json[ss.str()]["ecc"] = false;
+            otp_json[ss.str()]["value"][i] = page1_inverse[i];
+        }
+        for (int i = 0; i < page2_inverse.size(); i++) {
+            std::stringstream ss;
+            ss << settings.encrypt.otp_key_page + 2 << ":32";
+            otp_json[ss.str()]["ecc"] = false;
+            otp_json[ss.str()]["value"][i] = page2_inverse[i];
+        }
+    #else
         // Add otp AES key page
         for (int i = 0; i < 128; ++i) {
             std::stringstream ss;
@@ -5301,6 +5402,7 @@ bool encrypt_command::execute(device_map &devices) {
             otp_json[ss.str()]["ecc"] = true;
             otp_json[ss.str()]["value"][i] = iv_salt[i];
         }
+    #endif
 
         // Add page locks to prevent BL and NS access, and only allow S reads
         {
@@ -5309,6 +5411,9 @@ bool encrypt_command::execute(device_map &devices) {
             otp_json[ss.str()] = "0x3d3d3d";
             ss.str(string());
             ss << "PAGE" << settings.encrypt.otp_key_page + 1 << "_LOCK1";
+            otp_json[ss.str()] = "0x3d3d3d";
+            ss.str(string());
+            ss << "PAGE" << settings.encrypt.otp_key_page + 2 << "_LOCK1";
             otp_json[ss.str()] = "0x3d3d3d";
         }
 
@@ -5958,26 +6063,6 @@ std::map<std::pair<uint32_t,uint32_t>, otp_match> filter_otp(std::vector<string>
         }
     }
     return matches;
-}
-
-// todo we could make this popcount at the cost of having this not be Armv6m or adding the popcount instruction to varmulet for bootrom
-static uint32_t even_parity(uint32_t input) {
-    return __builtin_popcount(input) & 1;
-}
-
-// In: 16-bit unsigned integer. Out: 22-bit unsigned integer.
-uint32_t __noinline otp_calculate_ecc(uint16_t x) {
-    // Source: db_shf40_ap_ab.pdf, page 25, "TABLE 9: PARITY BIT GENERATION MAP
-    // FOR 16 BIT USER DATA (X24 SHF MACROCELL)"
-    // https://drive.google.com/drive/u/1/folders/1jgU3tZt2BDeGkWUFhi6KZAlaYUpGrFaG
-    uint32_t p0 = even_parity(x & 0b1010110101011011);
-    uint32_t p1 = even_parity(x & 0b0011011001101101);
-    uint32_t p2 = even_parity(x & 0b1100011110001110);
-    uint32_t p3 = even_parity(x & 0b0000011111110000);
-    uint32_t p4 = even_parity(x & 0b1111100000000000);
-    uint32_t p5 = even_parity(x) ^ p0 ^ p1 ^ p2 ^ p3 ^ p4;
-    uint32_t p = p0 | (p1 << 1) | (p2 << 2) | (p3 << 3) | (p4 << 4) | (p5 << 5);
-    return x | (p << 16);
 }
 
 #if HAS_LIBUSB
