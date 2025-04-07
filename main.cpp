@@ -5160,6 +5160,12 @@ bool encrypt_command::execute(device_map &devices) {
         block new_block = place_new_block(elf, first_block);
         elf->editable = true;
 
+        // Delete existing load_map, as it will be invalid after encryption
+        std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
+        if (load_map != nullptr) {
+            new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
+        }
+
         if (settings.encrypt.embed) {
             std::vector<uint8_t> iv_data;
             std::vector<uint8_t> enc_data;
@@ -5284,6 +5290,12 @@ bool encrypt_command::execute(device_map &devices) {
         }
         auto bin_cp = bin;
         block new_block = place_new_block(bin_cp, bin_start, first_block);
+
+        // Delete existing load_map, as it will be invalid after encryption
+        std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
+        if (load_map != nullptr) {
+            new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
+        }
 
         auto enc_data = encrypt(bin, bin_start, bin_start, &new_block, aes_key, public_key, private_key, iv_salt, settings.seal.hash, settings.seal.sign);
 

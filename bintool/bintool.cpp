@@ -327,11 +327,7 @@ block place_new_block(elf_file *elf, std::unique_ptr<block> &first_block) {
                   std::back_inserter(new_block.items));
     }
 
-    // Delete existing load_map, signature and hash as these will be replaced with new ones
-    std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
-    if (load_map != nullptr) {
-        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
-    }
+    // Delete existing signature and hash as these will be replaced with new ones
     std::shared_ptr<signature_item> signature = new_block.get_item<signature_item>();
     if (signature != nullptr) {
         new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), signature), new_block.items.end());
@@ -461,11 +457,7 @@ block place_new_block(std::vector<uint8_t> &bin, uint32_t storage_addr, std::uni
                   std::back_inserter(new_block.items));
     }
 
-    // Delete existing load_map, signature and hash as these will be replaced with new ones
-    std::shared_ptr<load_map_item> load_map = new_block.get_item<load_map_item>();
-    if (load_map != nullptr) {
-        new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), load_map), new_block.items.end());
-    }
+    // Delete existing signature and hash as these will be replaced with new ones
     std::shared_ptr<signature_item> signature = new_block.get_item<signature_item>();
     if (signature != nullptr) {
         new_block.items.erase(std::remove(new_block.items.begin(), new_block.items.end(), signature), new_block.items.end());
