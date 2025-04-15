@@ -2717,17 +2717,16 @@ uint32_t guess_flash_size(memory_access &access) {
     return size * 2;
 }
 
-// returns true if filename is a hex string, and fills array with the values
-bool filename_to_hex_array(uint8_t idx, uint8_t *array, size_t size) {
-    auto filename = settings.filenames[idx];
+// returns true if string is a hex string, and fills array with the values
+bool string_to_hex_array(const string& str, uint8_t *array, size_t size, const string& error_msg) {
 
-    if (!filename.empty() && filename.find("0x") == 0) {
+    if (!str.empty() && str.find("0x") == 0) {
         // Hex string instead of file
-        if (filename.size() != size*2 + 2) {
-            fail(ERROR_ARGS, "Hex string must be %d characters long (the supplied string is %d characters)", size*2, filename.size() - 2);
+        if (str.size() != size*2 + 2) {
+            fail(ERROR_ARGS, "%s hex string must be %d characters long (the supplied string is %d characters)", error_msg.c_str(), size*2, str.size() - 2);
         }
         for (size_t i=0; i < size; i++) {
-            auto value = "0x" + filename.substr(2 + i*2, 2);
+            auto value = "0x" + str.substr(2 + i*2, 2);
             auto ret = integer::parse_string(value, array[i]);
             if (!ret.empty()) {
                 fail(ERROR_ARGS, "Invalid hex string: %s %s", value.c_str(), ret.c_str());
@@ -5067,13 +5066,13 @@ bool encrypt_command::execute(device_map &devices) {
         fail(ERROR_ARGS, "Can only sign to same file type");
     }
 
-    if (filename_to_hex_array(2, aes_key.bytes, sizeof(aes_key.bytes))) {
+    if (string_to_hex_array(settings.filenames[2], aes_key.bytes, sizeof(aes_key.bytes), "AES key")) {
         keyFromFile = false;
     } else if (get_file_type_idx(2) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read AES key share from BIN file");
     }
 
-    if (filename_to_hex_array(3, iv_salt.data(), iv_salt.size())) {
+    if (string_to_hex_array(settings.filenames[3], iv_salt.data(), iv_salt.size(), "IV OTP salt")) {
         ivFromFile = false;
     } else if (get_file_type_idx(3) != filetype::bin) {
         fail(ERROR_ARGS, "Can only read IV OTP salt from BIN file");
