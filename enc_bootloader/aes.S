@@ -1441,7 +1441,7 @@ storeroundkey:
 .balign 4
 .thumb_func
 init_key_4way:
-@ On entry, r0 points to 4-way shared raw key data (128 bytes)
+@ On entry, r0 points to 4-way shared raw key data (64 bytes, 64 byte gap for FIB workaround, then other 64 bytes)
 @ The format is a0 b0 c0 d0 a1 b1 c1 d1 ... a7 b7 c7 d7
 @ That is, each word, K, of the original 256-bit key is expanded into four words whose exclusive OR is K.
 @
@@ -1464,12 +1464,18 @@ init_key_4way:
  bl randomisechaff
  ldr r6,=rkey4way
  movs r7,#8
+ b 1f
+2:
+ adds r5,#64                @ Skip 64 byte gap for FIB workaround
+ subs r7,r7,#1
 1:
  ldmia r5!,{r1-r4}
  bl gen_rand_sha; eors r1,r1,r0; eors r4,r4,r0
  bl gen_rand_sha; eors r2,r2,r0; eors r4,r4,r0
  bl gen_rand_sha; eors r3,r3,r0; eors r4,r4,r0
  stmia r6!,{r1-r4}
+ cmp r7,#5
+ beq 2b
  subs r7,r7,#1
  bne 1b
 

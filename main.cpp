@@ -5321,6 +5321,7 @@ bool encrypt_command::execute(device_map &devices) {
         }
         auto json_out = get_file_idx(ios::out, 5);
 
+    #define FIB_WORKAROUND 1
     #if FIB_WORKAROUND
         // Make inverse pages to work around OTP FIB attack
         vector<uint8_t> page0_data;

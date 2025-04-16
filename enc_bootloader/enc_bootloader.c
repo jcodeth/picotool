@@ -153,6 +153,7 @@ bi_decl(bi_ptr_int32(0, 0, otp_key_page, 30));
 // That is a suitable point to lock the OTP area where key information is stored.
 void lock_key() {
     otp_hw->sw_lock[otp_key_page] = 0xf;
+    otp_hw->sw_lock[otp_key_page + 1] = 0xf;
 }
 
 
@@ -165,14 +166,14 @@ int main() {
     uint16_t* otp_data = (uint16_t*)OTP_DATA_GUARDED_BASE;
     decrypt(
         (uint8_t*)&(otp_data[otp_key_page * 0x40]),
-        (uint8_t*)&(otp_data[(otp_key_page + 1) * 0x40]),
+        (uint8_t*)&(otp_data[(otp_key_page + 2) * 0x40]),
         (uint8_t*)iv,
         (void*)data_start_addr,
         data_size/16
     );
 
     // Lock the IV salt
-    otp_hw->sw_lock[otp_key_page + 1] = 0xf;
+    otp_hw->sw_lock[otp_key_page + 2] = 0xf;
 
     // Increase stack limit by 0x100
     pico_default_asm_volatile(
