@@ -5072,7 +5072,7 @@ bool encrypt_command::execute(device_map &devices) {
     if (string_to_hex_array(settings.filenames[2], aes_key.bytes, sizeof(aes_key.bytes), "AES key")) {
         keyFromFile = false;
     } else if (get_file_type_idx(2) != filetype::bin) {
-        fail(ERROR_ARGS, "Can only read AES key share from BIN file");
+        fail(ERROR_ARGS, "Can only read AES key or AES key share from BIN file");
     }
 
     if (string_to_hex_array(settings.filenames[3], iv_salt.data(), iv_salt.size(), "IV OTP salt")) {
