@@ -849,7 +849,7 @@ struct encrypt_command : public cmd {
             option("--verbose").set(settings.verbose) % "Print verbose output" +
             option("--embed").set(settings.encrypt.embed) % "Embed bootloader in output file" +
             option("--fast-rosc").set(settings.encrypt.fast_rosc) % "Use ~180MHz ROSC configuration for embedded bootloader" +
-            option("--use-mbedtls").set(settings.encrypt.use_mbedtls) % "Use MbedTLS implementation of embedded bootloader" +
+            option("--use-mbedtls").set(settings.encrypt.use_mbedtls) % "Use MbedTLS implementation of embedded bootloader (faster but less secure)" +
             (
                 option("--otp-key-page").set(settings.encrypt.otp_key_page_set) % "Specify the OTP page storing the AES key (IV salt is stored on the next page)" &
                     integer("page").set(settings.encrypt.otp_key_page) % "OTP page (default 30)"
