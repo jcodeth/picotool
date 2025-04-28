@@ -56,10 +56,6 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-# To configure mbedtls, without modifying mbedtls CMake files
-set(MBEDTLS_CONFIG_FILE "mbedtls_config.h")
-include_directories(${CMAKE_SOURCE_DIR}/lib/include)
-
 add_subdirectory(lib)
 
 if (NOT DEFINED USE_PRECOMPILED)
@@ -336,6 +332,10 @@ else()
     target_link_libraries(picotool 
         picoboot_connection_cxx
         ${LIBUSB_LIBRARIES})
+endif()
+
+if (GENERATE_FIXED_DOCS_WIDTH)
+    target_compile_definitions(picotool PRIVATE DOCS_WIDTH=140)
 endif()
 
 # allow `make install`
