@@ -16,10 +16,10 @@ SYNOPSIS:
     picotool config [-s <key> <value>] [-g <group>] <filename> [-t <type>]
     picotool load [--ignore-partitions] [--family <family_id>] [-p <partition>] [-n] [-N] [-u] [-v] [-x] <filename> [-t <type>] [-o
                 <offset>] [device-selection]
-    picotool encrypt [--quiet] [--verbose] [--hash] [--sign] <infile> [-t <type>] [-o <offset>] <outfile> [-t <type>] <aes_key> [-t <type>]
-                [<signing_key>] [-t <type>]
-    picotool seal [--quiet] [--verbose] [--hash] [--sign] [--clear] <infile> [-t <type>] [-o <offset>] <outfile> [-t <type>] [<key>] [-t
-                <type>] [<otp>] [-t <type>] [--major <major>] [--minor <minor>] [--rollback <rollback> [<rows>..]]
+    picotool encrypt [--quiet] [--verbose] [--embed] [--fast-rosc] [--use-mbedtls] [--otp-key-page <page>] [--hash] [--sign] <infile> [-t
+                <type>] [-o <offset>] <outfile> [-t <type>] <aes_key> <iv_salt> <signing_key> <otp>
+    picotool seal [--quiet] [--verbose] [--hash] [--sign] [--clear] <infile> [-t <type>] [-o <offset>] <outfile> [-t <type>] <key> <otp>
+                [--major <major>] [--minor <minor>] [--rollback <rollback> [<rows>..]]
     picotool link [--quiet] [--verbose] <outfile> [-t <type>] <infile1> [-t <type>] <infile2> [-t <type>] [<infile3>] [-t <type>] [-p <pad>]
     picotool save [-p] [-v] [--family <family_id>] <filename> [-t <type>] [device-selection]
     picotool save -a [-v] [--family <family_id>] <filename> [-t <type>] [device-selection]
@@ -33,7 +33,7 @@ SYNOPSIS:
     picotool partition info|create
     picotool uf2 info|convert
     picotool version [-s] [<version>]
-    picotool coprodis [--quiet] [--verbose] <infile> [-t <type>] <outfile> [-t <type>]
+    picotool coprodis [--quiet] [--verbose] <infile> <outfile>
     picotool help [<cmd>]
 
 COMMANDS:
@@ -578,14 +578,18 @@ SEAL:
     Add final metadata to a binary, optionally including a hash and/or signature.
 
 SYNOPSIS:
-    picotool seal [--quiet] [--verbose] [--hash] [--sign] [--clear] <infile> [-t <type>] [-o <offset>] <outfile> [-t <type>] [<key>] [-t
-                <type>] [<otp>] [-t <type>] [--major <major>] [--minor <minor>] [--rollback <rollback> [<rows>..]]
+    picotool seal [--quiet] [--verbose] [--hash] [--sign] [--clear] <infile> [-t <type>] [-o <offset>] <outfile> [-t <type>] <key> <otp>
+                [--major <major>] [--minor <minor>] [--rollback <rollback> [<rows>..]]
 
 OPTIONS:
         --quiet
             Don't print any output
         --verbose
             Print verbose output
+        <key>
+            Key file (.pem)
+        <otp>
+            JSON file to save OTP to (will edit existing file if it exists)
         --major <major>
             Add Major Version
         --minor <minor>
@@ -614,16 +618,6 @@ OPTIONS:
             The file name
         -t <type>
             Specify file type (uf2 | elf | bin) explicitly, ignoring file extension
-    Key file
-        <key>
-            The file name
-        -t <type>
-            Specify file type (pem) explicitly, ignoring file extension
-    File to save OTP to (will edit existing file if it exists)
-        <otp>
-            The file name
-        -t <type>
-            Specify file type (json) explicitly, ignoring file extension
 ```
 
 ## encrypt
@@ -654,8 +648,8 @@ ENCRYPT:
     Encrypt the program.
 
 SYNOPSIS:
-    picotool encrypt [--quiet] [--verbose] [--embed] [--fast-rosc] [--use-mbedtls] [--otp-key-page <page>] [--hash] [--sign] <infile>
-                [-t <type>] [-o <offset>] <outfile> [-t <type>] <aes_key> <iv_otp> <signing_key> <otp>
+    picotool encrypt [--quiet] [--verbose] [--embed] [--fast-rosc] [--use-mbedtls] [--otp-key-page <page>] [--hash] [--sign] <infile> [-t
+                <type>] [-o <offset>] <outfile> [-t <type>] <aes_key> <iv_salt> <signing_key> <otp>
 
 OPTIONS:
         --quiet
@@ -667,19 +661,19 @@ OPTIONS:
         --fast-rosc
             Use ~180MHz ROSC configuration for embedded bootloader
         --use-mbedtls
-            Use MbedTLS implementation of embedded bootloader
+            Use MbedTLS implementation of embedded bootloader (faster but less secure)
         --otp-key-page
             Specify the OTP page storing the AES key (IV salt is stored on the next page)
         <page>
             OTP page (default 30)
         <aes_key>
             AES Key Share or AES Key
-        <iv_otp>
-            IV OTP Salt
+        <iv_salt>
+            IV Salt
         <signing_key>
-            Signing Key file
+            Signing Key file (.pem)
         <otp>
-            File to save OTP to (will edit existing file if it exists)
+            JSON file to save OTP to (will edit existing file if it exists)
     Signing Configuration
         --hash
             Hash the encrypted file
@@ -768,19 +762,16 @@ PARTITION CREATE:
     Create a partition table from json
 
 SYNOPSIS:
-    picotool partition create [--quiet] [--verbose] <infile> [-t <type>] <outfile> [-t <type>] [[-o <offset>] [--family <family_id>]]
-                [<bootloader>] [-t <type>] [[--sign <keyfile>] [-t <type>] [--no-hash] [--singleton]] [[--abs-block] [<abs_block_loc>]]
+    picotool partition create [--quiet] [--verbose] <infile> <outfile> [-t <type>] [[-o <offset>] [--family <family_id>]] [<bootloader>] [-t
+                <type>] [[--sign <keyfile>] [-t <type>] [--no-hash] [--singleton]] [[--abs-block] [<abs_block_loc>]]
 
 OPTIONS:
         --quiet
             Don't print any output
         --verbose
             Print verbose output
-    partition table JSON
         <infile>
-            The file name
-        -t <type>
-            Specify file type (json) explicitly, ignoring file extension
+            partition table JSON
     output file
         <outfile>
             The file name
@@ -915,9 +906,9 @@ SYNOPSIS:
     picotool otp get [-c <copies>] [-r] [-e] [-n] [-i <filename>] [device-selection] [-z] [<selector>..]
     picotool otp set [-c <copies>] [-r] [-e] [-s] [-i <filename>] [-z] <selector> <value> [device-selection]
     picotool otp load [-r] [-e] [-s <row>] [-i <filename>] <filename> [-t <type>] [device-selection]
-    picotool otp dump [-r] [-e] [device-selection]
-    picotool otp permissions <filename> [-t <type>] [--led <pin>] [--hash] [--sign] [<key>] [-t <type>] [device-selection]
-    picotool otp white-label -s <row> <filename> [-t <type>] [device-selection]
+    picotool otp dump [-r] [-e] [-p] [device-selection]
+    picotool otp permissions <filename> [--led <pin>] [--hash] [--sign] <key> [device-selection]
+    picotool otp white-label -s <row> <filename> [device-selection]
 
 SUB COMMANDS:
     list          List matching known registers/fields
@@ -1120,14 +1111,11 @@ OTP WHITE-LABEL:
     Set the white labelling values in OTP
 
 SYNOPSIS:
-    picotool otp white-label -s <row> <filename> [-t <type>] [device-selection]
+    picotool otp white-label -s <row> <filename> [device-selection]
 
 OPTIONS:
-    File with white labelling values
         <filename>
-            The file name
-        -t <type>
-            Specify file type (json) explicitly, ignoring file extension
+            JSON file with white labelling values
     Target device selection
         --bus <bus>
             Filter devices by USB bus number
@@ -1199,14 +1187,11 @@ OTP PERMISSIONS:
     Set the OTP access permissions
 
 SYNOPSIS:
-    picotool otp permissions <filename> [-t <type>] [--led <pin>] [--hash] [--sign] [<key>] [-t <type>] [device-selection]
+    picotool otp permissions <filename> [--led <pin>] [--hash] [--sign] <key> [device-selection]
 
 OPTIONS:
-    File to load permissions from
         <filename>
-            The file name
-        -t <type>
-            Specify file type (json) explicitly, ignoring file extension
+            JSON file to load permissions from
         --led <pin>
             LED Pin to flash; default 25
     Signing Configuration
@@ -1214,11 +1199,8 @@ OPTIONS:
             Hash the executable
         --sign
             Sign the executable
-    Key file
         <key>
-            The file name
-        -t <type>
-            Specify file type (pem) explicitly, ignoring file extension
+            Key file (.pem)
     Target device selection
         --bus <bus>
             Filter devices by USB bus number
@@ -1269,7 +1251,7 @@ OTP DUMP:
     Dump entire OTP
 
 SYNOPSIS:
-    picotool otp dump [-r] [-e] [device-selection]
+    picotool otp dump [-r] [-e] [-p] [device-selection]
 
 OPTIONS:
     Row/field options
@@ -1277,6 +1259,8 @@ OPTIONS:
             Get raw 24-bit values. This is the default
         -e, --ecc
             Use error correction
+        -p, --pages
+            Index by page number & row number
 
 TARGET SELECTION:
     Target device selection
@@ -1348,23 +1332,17 @@ COPRODIS:
     Post-process coprocessor instructions in disassembly files.
 
 SYNOPSIS:
-    picotool coprodis [--quiet] [--verbose] <infile> [-t <type>] <outfile> [-t <type>]
+    picotool coprodis [--quiet] [--verbose] <infile> <outfile>
 
 OPTIONS:
         --quiet
             Don't print any output
         --verbose
             Print verbose output
-    Input DIS
         <infile>
-            The file name
-        -t <type>
-            Specify file type (uf2 | elf | bin) explicitly, ignoring file extension
-    Output DIS
+            Input DIS
         <outfile>
-            The file name
-        -t <type>
-            Specify file type (uf2 | elf | bin) explicitly, ignoring file extension
+            Output DIS
 ```
 
 ## link
