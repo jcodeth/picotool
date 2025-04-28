@@ -73,6 +73,9 @@ jobs:
           picotool info -a flash_nuke.uf2
 
   test-examples:
+    # Prevent running twice for PRs from same repo
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    name: Test Build Examples
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
