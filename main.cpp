@@ -8841,6 +8841,11 @@ int main(int argc, char **argv) {
                         // again is to assume it has the same serial number.
                         settings.address = -1;
                         settings.bus = -1;
+                        // also skip vid/pid filtering, as that will typically change in BOOTSEL mode
+                        settings.pid = -1;
+                        // still filter for rpi vid/pid if we don't have a serial number, as that is an RP2040 running a no_flash binary, so will
+                        // have a standard rpi vid/pid in BOOTSEL mode
+                        settings.vid = settings.ser.empty() ? -1 : 0;   // 0 means skip vid/pid filtering entirely, -1 means filter for rpi vid/pid
                         continue;
                     }
                 }
