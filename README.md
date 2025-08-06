@@ -113,6 +113,8 @@ TARGET SELECTION:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -221,6 +223,8 @@ TARGET SELECTION:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -322,6 +326,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -388,6 +394,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -462,6 +470,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -511,6 +521,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -724,6 +736,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -881,6 +895,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -980,6 +996,8 @@ TARGET SELECTION:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -1040,6 +1058,8 @@ TARGET SELECTION:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -1087,6 +1107,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -1131,6 +1153,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -1216,6 +1240,8 @@ OPTIONS:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
@@ -1281,6 +1307,8 @@ TARGET SELECTION:
             Filter by product id
         --ser <ser>
             Filter by serial number
+        --rp2040
+            Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)
         -f, --force
             Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
             command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
