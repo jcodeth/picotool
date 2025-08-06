@@ -184,15 +184,15 @@ enum picoboot_device_result picoboot_open_device(libusb_device *device, libusb_d
                 // Set model based on bootrom vid/pid for RP2040, as it cannot be white-labelled
                 *chip = rp2040;
             } else {
-                // Otherwise check the chip info
+                // Otherwise check the chip info command exists
                 struct picoboot_get_info_cmd info_cmd;
                 info_cmd.bType = PICOBOOT_GET_INFO_SYS,
                 info_cmd.dParams[0] = (uint32_t) (SYS_INFO_CHIP_INFO);
                 uint32_t word_buf[64];
-                // RP2040 doesn't have this function, so returns non-zero
+                // Other devices don't have this function, so will return errors
                 int info_ret = picoboot_get_info(*dev_handle, &info_cmd, (uint8_t*)word_buf, sizeof(word_buf));
                 if (info_ret) {
-                    *chip = rp2040;
+                    return dr_vidpid_unknown;
                 } else {
                     *chip = rp2350;
                 }

@@ -481,6 +481,7 @@ struct _settings {
     int vid=-1;
     int pid=-1;
     string ser;
+    bool force_rp2040 = false;
     uint32_t offset = 0;
     uint32_t from = 0;
     uint32_t to = 0;
@@ -610,6 +611,7 @@ auto device_selection =
         (option("--vid") & integer("vid").set(settings.vid).if_missing([] { return "missing vid"; })) % "Filter by vendor id" +
         (option("--pid") & integer("pid").set(settings.pid)) % "Filter by product id" +
         (option("--ser") & value("ser").set(settings.ser)) % "Filter by serial number"
+        + option("--rp2040").set(settings.force_rp2040) % "Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)"
         + option('f', "--force").set(settings.force) % "Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the command (unless the command itself is a 'reboot') the device will be rebooted back to application mode" +
                 option('F', "--force-no-reboot").set(settings.force_no_reboot) % "Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the USB drive mounted"
     ).min(0).doc_non_optional(true).collapse_synopsys("device-selection");
@@ -8703,6 +8705,13 @@ int main(int argc, char **argv) {
                     if (result != dr_error) {
                         devices[result].emplace_back(std::make_tuple(chip, *dev, handle));
                     }
+
+                    if (settings.vid == 0 && !settings.ser.empty() && !devices[dr_vidpid_bootrom_ok].empty()) {
+                        // Searching with no vid/pid filtering (ie opening all devices) can cause issues, so stop
+                        // searching when we have a serial number, as we know we have the correct device
+                        DEBUG_LOG("Found bootrom device with serial number, so stopping search");
+                        break;
+                    }
                 }
             }
             auto supported = selected_cmd->get_device_support();
@@ -8797,13 +8806,13 @@ int main(int argc, char **argv) {
                             // we reboot into BOOTSEL mode and disable MSC interface (the 1 here)
                             auto &to_reboot = std::get<1>(devices[dr_vidpid_stdio_usb][0]);
                             auto &to_reboot_handle = std::get<2>(devices[dr_vidpid_stdio_usb][0]);
+                            unsigned int disable_mask = 1;  // disable MSC interface
     #if defined(_WIN32)
                             {
                                 struct libusb_device_descriptor desc;
                                 libusb_get_device_descriptor(to_reboot, &desc);
-                                if (desc.idProduct == PRODUCT_ID_RP2040_STDIO_USB) {
-                                    fail(ERROR_NOT_POSSIBLE,
-                                        "Forced commands do not work with RP2040 on Windows - you can force reboot into BOOTSEL mode via 'picotool reboot -f -u' instead.");
+                                if (desc.idProduct == PRODUCT_ID_RP2040_STDIO_USB || settings.force_rp2040) {
+                                    disable_mask = 0;   // enable MSC interface so Zadig works correctly
                                 }
                             }
     #endif
@@ -8820,7 +8829,7 @@ int main(int argc, char **argv) {
                                 }
                             }
 
-                            reboot_device(to_reboot, to_reboot_handle, true, 1);
+                            reboot_device(to_reboot, to_reboot_handle, true, disable_mask);
                             fos << "The device was asked to reboot into BOOTSEL mode so the command can be executed.";
                         } else if (tries == 1) {
                             fos << "\nWaiting for device to reboot";
@@ -8841,11 +8850,13 @@ int main(int argc, char **argv) {
                         // again is to assume it has the same serial number.
                         settings.address = -1;
                         settings.bus = -1;
-                        // also skip vid/pid filtering, as that will typically change in BOOTSEL mode, and could be white-labelled on RP2350
-                        settings.pid = -1;
-                        // still filter for rpi vid/pid if we don't have a serial number, as that is an RP2040 running a no_flash binary, so will
-                        // have a standard rpi vid/pid in BOOTSEL mode
-                        settings.vid = settings.ser.empty() ? -1 : 0;   // 0 means skip vid/pid filtering entirely, -1 means filter for rpi vid/pid
+                        if (settings.pid != -1 || settings.vid != -1) {
+                            // also skip vid/pid filtering, as that should change in BOOTSEL mode, and could be white-labelled on RP2350
+                            settings.pid = -1;
+                            // still filter for rpi vid/pid if we don't have a serial number, as that is an RP2040 running a no_flash binary, so will
+                            // have a standard rpi vid/pid in BOOTSEL mode
+                            settings.vid = settings.ser.empty() ? -1 : 0;   // 0 means skip vid/pid filtering entirely, -1 means filter for rpi vid/pid
+                        }
                         continue;
                     }
                 }
