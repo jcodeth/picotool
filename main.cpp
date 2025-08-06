@@ -8729,6 +8729,11 @@ int main(int argc, char **argv) {
                             bool had_note = false;
                             fos << missing_device_string(tries>0, selected_cmd->requires_rp2350());
                             if (tries) {
+#if defined(_WIN32)
+                                if (settings.force_rp2040) {
+                                    fos << " You may need to install a driver via Zadig. See \"Getting started with Raspberry Pi Pico\" for more information.";
+                                }
+#endif
                                 fos << " It is possible the device is not responding, and will have to be manually entered into BOOTSEL mode.\n";
                                 had_note = true; // suppress "but:" in this case
                             }
@@ -8760,13 +8765,8 @@ int main(int argc, char **argv) {
                             printer(dr_vidpid_micropython,
                                     " appears to be an RP-series MicroPython device not in BOOTSEL mode.");
                             if (selected_cmd->force_requires_pre_reboot()) {
-    #if defined(_WIN32)
-                                printer(dr_vidpid_stdio_usb,
-                                        " appears to have a USB serial connection, not in BOOTSEL mode. You can force reboot into BOOTSEL mode via 'picotool reboot -f -u' first.");
-    #else
                                 printer(dr_vidpid_stdio_usb,
                                         " appears to have a USB serial connection, so consider -f (or -F) to force reboot in order to run the command.");
-    #endif
                             } else {
                                 // special case message for what is actually just reboot (the only command that doesn't require reboot first)
                                 printer(dr_vidpid_stdio_usb,
@@ -8813,6 +8813,7 @@ int main(int argc, char **argv) {
                                 libusb_get_device_descriptor(to_reboot, &desc);
                                 if (desc.idProduct == PRODUCT_ID_RP2040_STDIO_USB || settings.force_rp2040) {
                                     disable_mask = 0;   // enable MSC interface so Zadig works correctly
+                                    settings.force_rp2040 = true;
                                 }
                             }
     #endif
