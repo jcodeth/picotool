@@ -611,7 +611,7 @@ auto device_selection =
         (option("--vid") & integer("vid").set(settings.vid).if_missing([] { return "missing vid"; })) % "Filter by vendor id" +
         (option("--pid") & integer("pid").set(settings.pid)) % "Filter by product id" +
         (option("--ser") & value("ser").set(settings.ser)) % "Filter by serial number"
-        + option("--rp2040").set(settings.force_rp2040) % "Use RP2040 workarounds on Windows when using custom vid/pid (ignored on other platforms)"
+        + option("--rp2040").set(settings.force_rp2040) % "Use RP2040-specific workarounds when using a custom vid/pid on Windows (ignored on other platforms)"
         + option('f', "--force").set(settings.force) % "Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the command (unless the command itself is a 'reboot') the device will be rebooted back to application mode" +
                 option('F', "--force-no-reboot").set(settings.force_no_reboot) % "Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the USB drive mounted"
     ).min(0).doc_non_optional(true).collapse_synopsys("device-selection");
