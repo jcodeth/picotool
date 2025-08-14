@@ -8852,11 +8852,16 @@ int main(int argc, char **argv) {
                         settings.address = -1;
                         settings.bus = -1;
                         if (settings.pid != -1 || settings.vid != -1) {
-                            // also skip vid/pid filtering, as that should change in BOOTSEL mode, and could be white-labelled on RP2350
-                            settings.pid = -1;
-                            // still filter for rpi vid/pid if we don't have a serial number, as that is an RP2040 running a no_flash binary, so will
-                            // have a standard rpi vid/pid in BOOTSEL mode
-                            settings.vid = settings.ser.empty() ? -1 : 0;   // 0 means skip vid/pid filtering entirely, -1 means filter for rpi vid/pid
+                            // vid/pid filtering was enabled, but should change in BOOTSEL mode, so needs to be disabled
+                            if (settings.ser.empty()) {
+                                // this is an RP2040 running a no_flash binary, so will have a standard RP2040 vid/pid in BOOTSEL mode
+                                settings.vid = -1; // -1 means filter for standard vid/pid
+                                settings.pid = -1;
+                            } else {
+                                // skip vid/pid filtering, as it can be white-labelled on RP2350, and we know the serial number
+                                settings.vid = 0; // 0 means skip vid/pid filtering entirely
+                                settings.pid = -1;
+                            }
                         }
                         continue;
                     }
