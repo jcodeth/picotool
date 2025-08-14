@@ -1660,6 +1660,7 @@ to unlock our lockout of USB MSD writes (we have turned them off so the user doe
 `picotool info` again will unlock it properly the next time (or you can reboot the device).
 
 ### Zadig
+
 To communicate with RP2040 in BOOTSEL mode on Windows, you will need to install a driver. To do this, download and run [Zadig](http://zadig.akeo.ie), select `RP2 Boot (Interface 1)` from the dropdown box and select `WinUSB` as the driver, and click on the "Install Driver" button. Wait for the installation to complete - this may take a few minutes.
 
 This is only required for RP2040.
