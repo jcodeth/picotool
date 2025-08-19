@@ -6086,7 +6086,7 @@ bool link_command::execute(device_map &devices) {
 
 #if HAS_LIBUSB
 struct _bdevfs_setup {
-    picoboot::connection *con;
+    picoboot::connection *connection;
     std::shared_ptr<picoboot_memory_access> access;
     uint32_t base_addr;
     uint32_t size;
@@ -6095,14 +6095,13 @@ struct _bdevfs_setup {
 };
 _bdevfs_setup bdevfs_setup;
 
-void setup_bdevfs(picoboot::connection con) {
-    auto raw_access_ptr = std::make_shared<picoboot_memory_access>(con);
-    auto raw_access = *raw_access_ptr;
-    bdevfs_setup.con = &con;
-    bdevfs_setup.access = raw_access_ptr;
+#define setup_bdevfs(con) bdevfs_setup.access = std::make_shared<picoboot_memory_access>(con); bdevfs_setup.connection = &con; setup_bdevfs_internal()
+
+void setup_bdevfs_internal() {
+    auto raw_access = *bdevfs_setup.access;
 
     if (settings.bdev.partition >= 0) {
-        auto partitions = get_partitions(con);
+        auto partitions = get_partitions(*bdevfs_setup.connection);
         if (!partitions) {
             fail(ERROR_NOT_POSSIBLE, "There is no partition table on the device");
         }
@@ -6256,7 +6255,7 @@ DRESULT disk_ioctl (void *drv, BYTE cmd, void* buff) {
                 if (start % FLASH_SECTOR_ERASE_SIZE) start += FLASH_SECTOR_ERASE_SIZE - (start % FLASH_SECTOR_ERASE_SIZE);
                 end -= end % FLASH_SECTOR_ERASE_SIZE;
                 for (uint32_t addr = start; addr < end; addr += FLASH_SECTOR_ERASE_SIZE) {
-                    bdevfs_setup.con->flash_erase(addr, FLASH_SECTOR_ERASE_SIZE);
+                    bdevfs_setup.connection->flash_erase(addr, FLASH_SECTOR_ERASE_SIZE);
                 }
                 return RES_OK;
             } else {
@@ -6383,7 +6382,7 @@ int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, const
 
 int lfs_erase(const struct lfs_config *c, lfs_block_t block) {
     if (bdevfs_setup.writeable) {
-        bdevfs_setup.con->flash_erase(bdevfs_setup.base_addr + (block * c->block_size), c->block_size);
+        bdevfs_setup.connection->flash_erase(bdevfs_setup.base_addr + (block * c->block_size), c->block_size);
         return LFS_ERR_OK;
     } else {
         fail(ERROR_NOT_POSSIBLE, "This block device is not writeable");
@@ -6498,6 +6497,8 @@ bool bdev_ls_command::execute(device_map &devices) {
         dir.pop_back();
     }
 
+    fos << settings.filenames[0] << "/\n";
+
     switch (settings.bdev.fs) {
         case fs_littlefs: {
             lfs_op_fn lfs_op = [&](lfs_t *lfs) {
@@ -6555,6 +6556,9 @@ bool bdev_mkdir_command::execute(device_map &devices) {
         default:
             fail(ERROR_ARGS, "Unknown filesystem specified");
     }
+
+    fos << "Created directory " << settings.filenames[0] << " on device\n";
+
     return false;
 }
 
@@ -6725,6 +6729,9 @@ bool bdev_rm_command::execute(device_map &devices) {
         default:
             fail(ERROR_ARGS, "Unknown filesystem specified");
     }
+
+    fos << "Removed " << settings.filenames[0] << " from device\n";
+
     return false;
 }
 
