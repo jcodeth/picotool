@@ -97,6 +97,10 @@ static __forceinline int __builtin_ctz(unsigned x) {
 #ifndef BOOTROM_FAMILY_ID_MAX
 #define BOOTROM_FAMILY_ID_MAX       RP2350_ARM_NS_FAMILY_ID
 #endif
+#ifndef BLOCK_DEVICE_PARTITION_ID
+// The default 0x626C6F636B646576 value is the ASCII encoding of "blockdev"
+#define BLOCK_DEVICE_PARTITION_ID 0x626C6F636B646576
+#endif
 // ------
 
 using std::string;
@@ -4345,8 +4349,8 @@ model_t get_model(uint8_t file_idx) {
 }
 
 #if HAS_LIBUSB
-// Returns [(start, end, permissions)]
-std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t>>> get_partitions(picoboot::connection &con) {
+// Returns [(start, end, permissions, id)]
+std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t, uint64_t>>> get_partitions(picoboot::connection &con) {
     picoboot_memory_access raw_access(con);
     auto model = raw_access.get_model();
     if (!model->supports_partition_table()) {
@@ -4374,7 +4378,7 @@ std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t>>> get_partitions(pico
     resident_partition_t unpartitioned = *(resident_partition_t *) &loc_flags_id_buf_32[lfi_pos];
     lfi_pos += 2;
 
-    vector<tuple<uint32_t, uint32_t, uint32_t>> ret;
+    vector<tuple<uint32_t, uint32_t, uint32_t, uint64_t>> ret;
 
     if (!has_pt || !partition_count) {
         // there is no partition table, or it is empty
@@ -4386,7 +4390,7 @@ std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t>>> get_partitions(pico
             uint32_t location_and_permissions = loc_flags_id_buf_32[lfi_pos++];
             uint32_t flags_and_permissions = loc_flags_id_buf_32[lfi_pos++];
             uint32_t permissions = location_and_permissions & flags_and_permissions & PICOBIN_PARTITION_PERMISSIONS_BITS;
-            uint64_t id;
+            uint64_t id = 0;
             if (flags_and_permissions & PICOBIN_PARTITION_FLAGS_HAS_ID_BITS) {
                 id = loc_flags_id_buf_32[lfi_pos] | ((uint64_t) loc_flags_id_buf_32[lfi_pos + 1] << 32u);
                 lfi_pos += 2;
@@ -4394,7 +4398,8 @@ std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t>>> get_partitions(pico
             ret.push_back(std::make_tuple(
                 ((location_and_permissions >> PICOBIN_PARTITION_LOCATION_FIRST_SECTOR_LSB) & 0x1fffu) * 4096,
                 (((location_and_permissions >> PICOBIN_PARTITION_LOCATION_LAST_SECTOR_LSB) & 0x1fffu) + 1) * 4096,
-                permissions
+                permissions,
+                id
             ));
             if ((location_and_permissions ^ flags_and_permissions) &
                 PICOBIN_PARTITION_PERMISSIONS_BITS) {
@@ -4404,7 +4409,7 @@ std::shared_ptr<vector<tuple<uint32_t, uint32_t, uint32_t>>> get_partitions(pico
         }
     }
 
-    return std::make_shared<vector<tuple<uint32_t, uint32_t, uint32_t>>>(ret);
+    return std::make_shared<vector<tuple<uint32_t, uint32_t, uint32_t, uint64_t>>>(ret);
 }
 #endif
 
@@ -6100,8 +6105,11 @@ _bdevfs_setup bdevfs_setup;
 void setup_bdevfs_internal() {
     auto raw_access = *bdevfs_setup.access;
 
-    if (settings.bdev.partition >= 0) {
-        auto partitions = get_partitions(*bdevfs_setup.connection);
+    auto partitions = get_partitions(*bdevfs_setup.connection);
+
+    bool block_device_found = false;
+
+    if (settings.bdev.partition >= 0) { // use specified partition
         if (!partitions) {
             fail(ERROR_NOT_POSSIBLE, "There is no partition table on the device");
         }
@@ -6118,7 +6126,21 @@ void setup_bdevfs_internal() {
         }
         bdevfs_setup.base_addr = start;
         bdevfs_setup.size = end - start;
-    } else {
+        block_device_found = true;
+    } else if (partitions) { // use first partition with id "blockdev"
+        for (auto &partition : *partitions) {
+            if (std::get<3>(partition) != BLOCK_DEVICE_PARTITION_ID) {
+                continue;
+            }
+            bdevfs_setup.base_addr = std::get<0>(partition) + FLASH_START;
+            bdevfs_setup.size = std::get<1>(partition) - std::get<0>(partition);
+            bdevfs_setup.writeable = std::get<2>(partition) & PICOBIN_PARTITION_PERMISSION_NSBOOT_W_BITS;
+            block_device_found = true;
+            break;
+        }
+    }
+    
+    if (!block_device_found) { // use binary info
         binary_info_header hdr;
         auto bi_access = get_bi_access(raw_access);
         bool has_binary_info = find_binary_info(*bi_access, hdr);
