@@ -12,6 +12,7 @@ PICOTOOL:
 SYNOPSIS:
     picotool info [-b] [-m] [-p] [-d] [--debug] [-l] [-a] [device-selection]
     picotool info [-b] [-m] [-p] [-d] [--debug] [-l] [-a] <filename> [-t <type>]
+    picotool bdev ls|mkdir|cp|rm|cat
     picotool config [-s <key> <value>] [-g <group>] [device-selection]
     picotool config [-s <key> <value>] [-g <group>] <filename> [-t <type>]
     picotool load [--ignore-partitions] [--family <family_id>] [-p <partition>] [-n] [-N] [-u] [-v] [-x] <filename> [-t <type>] [-o
@@ -39,6 +40,7 @@ SYNOPSIS:
 COMMANDS:
     info        Display information from the target device(s) or file.
                 Without any arguments, this will display basic information for all connected RP-series devices in BOOTSEL mode
+    bdev        Commands related to embedded block devices
     config      Display or change program configuration settings from the target device(s) or file.
     load        Load the program / memory range stored in a file onto the device.
     encrypt     Encrypt the program.
@@ -1390,6 +1392,265 @@ OPTIONS:
             The file name
         <infile3>
             The file name
+```
+
+## bdev
+
+The `bdev` commands are for interacting with block devices in Flash. These can either be defined using binary info, or you can specify a partition to use as a block device. They work with a LittleFS filesystem, or a FatFS filesystem.
+
+```text
+$ picotool help bdev
+BDEV:
+    Commands related to embedded block devices
+
+SYNOPSIS:
+    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+SUB COMMANDS:
+    ls      List contents of the block device
+    mkdir   Create directory on the block device
+    cp      Copy file to/from the block device - use :filename to indicate files on the device (eg `cp main.py :main.py` to upload to the
+            device)
+    rm      Delete a file or an empty directory on the block device
+    cat     Print contents of file on the block device
+```
+
+### ls
+
+List contents of the block device
+
+```text
+$ picotool help bdev ls
+BDEV LS:
+    List contents of the block device
+
+SYNOPSIS:
+    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+OPTIONS:
+        <dirname>
+            The file name
+        -r, --recursive
+            List files in directories recursively
+    Block device options
+        -p, --partition
+            Partition to use as block device
+        <partition>
+            partition number
+        --filesystem
+            Specify filesystem to use
+        <fs>
+            littlefs|fatfs
+        -f, --format
+            Format the drive if necessary (may result in data loss)
+    Target device selection
+        --bus <bus>
+            Filter devices by USB bus number
+        --address <addr>
+            Filter devices by USB device address
+        --vid <vid>
+            Filter by vendor id
+        --pid <pid>
+            Filter by product id
+        --ser <ser>
+            Filter by serial number
+        -f, --force
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
+        -F, --force-no-reboot
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the
+            USB drive mounted
+```
+
+### mkdir
+
+Create directory on the block device
+
+```text
+$ picotool help bdev mkdir
+BDEV MKDIR:
+    Create directory on the block device
+
+SYNOPSIS:
+    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+OPTIONS:
+        <dirname>
+            The file name
+    Block device options
+        -p, --partition
+            Partition to use as block device
+        <partition>
+            partition number
+        --filesystem
+            Specify filesystem to use
+        <fs>
+            littlefs|fatfs
+        -f, --format
+            Format the drive if necessary (may result in data loss)
+    Target device selection
+        --bus <bus>
+            Filter devices by USB bus number
+        --address <addr>
+            Filter devices by USB device address
+        --vid <vid>
+            Filter by vendor id
+        --pid <pid>
+            Filter by product id
+        --ser <ser>
+            Filter by serial number
+        -f, --force
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
+        -F, --force-no-reboot
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the
+            USB drive mounted
+```
+
+### cp
+
+Copy file to/from the block device - use :filename to indicate files on the device (eg `cp main.py :main.py` to upload to the device)
+
+```text
+$ picotool help bdev cp
+BDEV CP:
+    Copy file to/from the block device - use :filename to indicate files on the device (eg `cp main.py :main.py` to upload to the device)
+
+SYNOPSIS:
+    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+OPTIONS:
+        <src>
+            The file name
+        <dest>
+            The file name
+    Block device options
+        -p, --partition
+            Partition to use as block device
+        <partition>
+            partition number
+        --filesystem
+            Specify filesystem to use
+        <fs>
+            littlefs|fatfs
+        -f, --format
+            Format the drive if necessary (may result in data loss)
+    Target device selection
+        --bus <bus>
+            Filter devices by USB bus number
+        --address <addr>
+            Filter devices by USB device address
+        --vid <vid>
+            Filter by vendor id
+        --pid <pid>
+            Filter by product id
+        --ser <ser>
+            Filter by serial number
+        -f, --force
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
+        -F, --force-no-reboot
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the
+            USB drive mounted
+```
+
+### rm
+
+Delete a file or an empty directory on the block device
+
+```text
+$ picotool help bdev rm
+BDEV RM:
+    Delete a file or an empty directory on the block device
+
+SYNOPSIS:
+    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+OPTIONS:
+        <filename>
+            The file name
+    Block device options
+        -p, --partition
+            Partition to use as block device
+        <partition>
+            partition number
+        --filesystem
+            Specify filesystem to use
+        <fs>
+            littlefs|fatfs
+        -f, --format
+            Format the drive if necessary (may result in data loss)
+    Target device selection
+        --bus <bus>
+            Filter devices by USB bus number
+        --address <addr>
+            Filter devices by USB device address
+        --vid <vid>
+            Filter by vendor id
+        --pid <pid>
+            Filter by product id
+        --ser <ser>
+            Filter by serial number
+        -f, --force
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
+        -F, --force-no-reboot
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the
+            USB drive mounted
+```
+
+### cat
+
+Print contents of file on the block device
+
+```text
+$ picotool help bdev cat
+BDEV CAT:
+    Print contents of file on the block device
+
+SYNOPSIS:
+    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+
+OPTIONS:
+        <filename>
+            The file name
+    Block device options
+        -p, --partition
+            Partition to use as block device
+        <partition>
+            partition number
+        --filesystem
+            Specify filesystem to use
+        <fs>
+            littlefs|fatfs
+        -f, --format
+            Format the drive if necessary (may result in data loss)
+    Target device selection
+        --bus <bus>
+            Filter devices by USB bus number
+        --address <addr>
+            Filter devices by USB device address
+        --vid <vid>
+            Filter by vendor id
+        --pid <pid>
+            Filter by product id
+        --ser <ser>
+            Filter by serial number
+        -f, --force
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be rebooted back to application mode
+        -F, --force-no-reboot
+            Force a device not in BOOTSEL mode but running compatible code to reset so the command can be executed. After executing the
+            command (unless the command itself is a 'reboot') the device will be left connected and accessible to picotool, but without the
+            USB drive mounted
 ```
 
 ## Binary Information
