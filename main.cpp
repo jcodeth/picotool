@@ -690,12 +690,14 @@ auto device_selection =
     named_file_types_x(types, i)\
 )
 
-#define named_untyped_file_selection_x(name, i)\
+#define named_untyped_path_selection_x(name, desc, i)\
 (\
     value(name).with_exclusion_filter([](const string &value) {\
             return value.find_first_of('-') == 0;\
-        }).set(settings.filenames[i]) % "The file name"\
+        }).set(settings.filenames[i]) % desc\
 )
+
+#define named_untyped_file_selection_x(name, i) named_untyped_path_selection_x(name, "The file name", i)
 
 #define optional_file_selection_x(name, i)\
 (\
@@ -863,7 +865,7 @@ struct bdev_mkdir_command : public cmd {
 
     group get_cli() override {
         return (
-            named_untyped_file_selection_x("dirname", 0) +
+            named_untyped_path_selection_x("dirname", "The directory name", 0) +
             bdev_options +
             device_selection % "Target device selection"
         );

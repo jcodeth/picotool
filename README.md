@@ -1481,7 +1481,7 @@ SYNOPSIS:
 
 OPTIONS:
         <dirname>
-            The file name
+            The directory name
     Block device options
         -p, --partition
             Partition to use as block device
