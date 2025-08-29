@@ -6223,6 +6223,32 @@ void setup_bdevfs_internal() {
 }
 
 // FatFS Functions
+string fatfs_err_str(int err) {
+    switch (err) {
+        case FR_OK: return "Succeeded";
+        case FR_DISK_ERR: return "A hard error occurred in the low level disk I/O layer";
+        case FR_INT_ERR: return "Assertion failed";
+        case FR_NOT_READY: return "The physical drive cannot work";
+        case FR_NO_FILE: return "Could not find the file";
+        case FR_NO_PATH: return "Could not find the path";
+        case FR_INVALID_NAME: return "The path name format is invalid";
+        case FR_DENIED: return "Access denied due to prohibited access or directory full";
+        case FR_EXIST: return "Access denied due to prohibited access";
+        case FR_INVALID_OBJECT: return "The file/directory object is invalid";
+        case FR_WRITE_PROTECTED: return "The physical drive is write protected";
+        case FR_INVALID_DRIVE: return "The logical drive number is invalid";
+        case FR_NOT_ENABLED: return "The volume has no work area";
+        case FR_NO_FILESYSTEM: return "There is no valid FAT volume";
+        case FR_MKFS_ABORTED: return "The f_mkfs() aborted due to any problem";
+        case FR_TIMEOUT: return "Could not get a grant to access the volume within defined period";
+        case FR_LOCKED: return "The operation is rejected according to the file sharing policy";
+        case FR_NOT_ENOUGH_CORE: return "LFN working buffer could not be allocated";
+        case FR_TOO_MANY_OPEN_FILES: return "Number of open files > FF_FS_LOCK";
+        case FR_INVALID_PARAMETER: return "Given parameter is invalid";
+        default: return "Unknown error";
+    }
+}
+
 DWORD get_fattime (void) {
     std::time_t t = std::time(0);
     std::tm* now = std::localtime(&t);
@@ -6391,11 +6417,11 @@ void do_fatfs_op(fatfs_op_fn fatfs_op) {
                 uint8_t work_buf[SECTOR_SIZE];
                 err = f_mkfs(&fatfs, FM_ANY | FM_SFD, 0, work_buf, sizeof(work_buf));
                 if (err) {
-                    fail(ERROR_CONNECTION, "FatFS Format Error %d", err);
+                    fail(ERROR_CONNECTION, "FatFS Format Error: %s", fatfs_err_str(err).c_str());
                 }
                 err = f_mount(&fatfs);
                 if (err) {
-                    fail(ERROR_CONNECTION, "FatFS Format Failed with %d", err);
+                    fail(ERROR_CONNECTION, "FatFS Format Failed with: %s", fatfs_err_str(err).c_str());
                 }
             } else {
                 fail(ERROR_NOT_POSSIBLE, "This block device is not formattable");
@@ -6404,13 +6430,34 @@ void do_fatfs_op(fatfs_op_fn fatfs_op) {
             fail(ERROR_CONNECTION, "FatFS file system is corrupted - add -f flag to format it (this may result in data loss)");
         }
     } else if (err) {
-        fail(ERROR_CONNECTION, "FatFS Mount Error %d", err);
+        fail(ERROR_CONNECTION, "FatFS Mount Error: %s", fatfs_err_str(err).c_str());
     }
 
     fatfs_op(&fatfs);
 }
 
 // LittleFS Functions
+string lfs_err_str(int err) {
+    switch (err) {
+        case LFS_ERR_OK: return "No error";
+        case LFS_ERR_IO: return "Error during device operation";
+        case LFS_ERR_CORRUPT: return "Corrupted";
+        case LFS_ERR_NOENT: return "No directory entry";
+        case LFS_ERR_EXIST: return "Entry already exists";
+        case LFS_ERR_NOTDIR: return "Entry is not a dir";
+        case LFS_ERR_ISDIR: return "Entry is a dir";
+        case LFS_ERR_NOTEMPTY: return "Dir is not empty";
+        case LFS_ERR_BADF: return "Bad file number";
+        case LFS_ERR_FBIG: return "File too large";
+        case LFS_ERR_INVAL: return "Invalid parameter";
+        case LFS_ERR_NOSPC: return "No space left on device";
+        case LFS_ERR_NOMEM: return "No more memory available";
+        case LFS_ERR_NOATTR: return "No data/attr available";
+        case LFS_ERR_NAMETOOLONG: return "File name too long";
+        default: return "Unknown error";
+    }
+}
+
 int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size) {
     if (block >= bdevfs_setup.size / c->block_size) {
         fail(ERROR_NOT_POSSIBLE, "Block %d is out of range", block);
@@ -6537,7 +6584,7 @@ void do_lfs_op(lfs_op_fn lfs_op) {
             fail(ERROR_CONNECTION, "LittleFS file system is corrupted - add -f flag to format it (this may result in data loss)");
         }
     } else if (err) {
-        fail(ERROR_CONNECTION, "LittleFS Mount Error %d", err);
+        fail(ERROR_CONNECTION, "LittleFS Mount Error: %s", lfs_err_str(err).c_str());
     }
 
     lfs_op(&lfs);
@@ -6667,14 +6714,14 @@ bool bdev_cp_command::execute(device_map &devices) {
                     lfs_file_t file;
                     int err = lfs_file_open(lfs, &file, settings.filenames[0].c_str(), LFS_O_RDONLY);
                     if (err) {
-                        fail(ERROR_READ_FAILED, "LittleFS Open Error %d", err);
+                        fail(ERROR_READ_FAILED, "LittleFS Open Error: %s", lfs_err_str(err).c_str());
                     }
                     auto size = lfs_file_size(lfs, &file);
                     err = lfs_file_rewind(lfs, &file);
                     data_buf.resize(size);
                     err = lfs_file_read(lfs, &file, data_buf.data(), data_buf.size());
                     if (err < 0) {
-                        fail(ERROR_READ_FAILED, "LittleFS Read Error %d", err);
+                        fail(ERROR_READ_FAILED, "LittleFS Read Error: %s", lfs_err_str(err).c_str());
                     } else if (err != data_buf.size()) {
                         fail(ERROR_READ_FAILED, "LittleFS Read too short - got %d bytes expected %d bytes", err, data_buf.size());
                     }
@@ -6685,11 +6732,11 @@ bool bdev_cp_command::execute(device_map &devices) {
                     lfs_file_t file;
                     int err = lfs_file_open(lfs, &file, settings.filenames[1].c_str(), LFS_O_WRONLY | LFS_O_CREAT);
                     if (err) {
-                        fail(ERROR_WRITE_FAILED, "LittleFS Open Error %d", err);
+                        fail(ERROR_WRITE_FAILED, "LittleFS Open Error: %s", lfs_err_str(err).c_str());
                     }
                     err = lfs_file_write(lfs, &file, data_buf.data(), data_buf.size());
                     if (err < 0) {
-                        fail(ERROR_WRITE_FAILED, "LittleFS Write Error %d", err);
+                        fail(ERROR_WRITE_FAILED, "LittleFS Write Error: %s", lfs_err_str(err).c_str());
                     } else if (err != data_buf.size()) {
                         fail(ERROR_WRITE_FAILED, "LittleFS Write too short - wrote %d bytes expected %d bytes", err, data_buf.size());
                     }
@@ -6706,14 +6753,14 @@ bool bdev_cp_command::execute(device_map &devices) {
                     FIL file;
                     FRESULT err = f_open(fatfs, &file, settings.filenames[0].c_str(), FA_READ);
                     if (err) {
-                        fail(ERROR_READ_FAILED, "FatFS Open Error %d", err);
+                        fail(ERROR_READ_FAILED, "FatFS Open Error: %s", fatfs_err_str(err).c_str());
                     }
                     auto size = f_size(&file);
                     data_buf.resize(size);
                     UINT bytes_read;
                     err = f_read(&file, data_buf.data(), data_buf.size(), &bytes_read);
                     if (err) {
-                        fail(ERROR_READ_FAILED, "FatFS Read Error %d", err);
+                        fail(ERROR_READ_FAILED, "FatFS Read Error: %s", fatfs_err_str(err).c_str());
                     } else if (bytes_read != data_buf.size()) {
                         fail(ERROR_READ_FAILED, "FatFS Read too short - got %d bytes expected %d bytes", bytes_read, data_buf.size());
                     }
@@ -6724,12 +6771,12 @@ bool bdev_cp_command::execute(device_map &devices) {
                     FIL file;
                     FRESULT err = f_open(fatfs, &file, settings.filenames[1].c_str(), FA_WRITE | FA_OPEN_ALWAYS);
                     if (err) {
-                        fail(ERROR_WRITE_FAILED, "FatFS Open Error %d", err);
+                        fail(ERROR_WRITE_FAILED, "FatFS Open Error: %s", fatfs_err_str(err).c_str());
                     }
                     UINT bytes_written;
                     err = f_write(&file, data_buf.data(), data_buf.size(), &bytes_written);
                     if (err) {
-                        fail(ERROR_WRITE_FAILED, "FatFS Write Error %d", err);
+                        fail(ERROR_WRITE_FAILED, "FatFS Write Error: %s", fatfs_err_str(err).c_str());
                     } else if (bytes_written != data_buf.size()) {
                         fail(ERROR_WRITE_FAILED, "FatFS Write too short - wrote %d bytes expected %d bytes", bytes_written, data_buf.size());
                     }
@@ -6811,14 +6858,14 @@ bool bdev_cat_command::execute(device_map &devices) {
                 lfs_file_t file;
                 int err = lfs_file_open(lfs, &file, settings.filenames[0].c_str(), LFS_O_RDONLY);
                 if (err) {
-                    fail(ERROR_READ_FAILED, "LittleFS Open Error %d", err);
+                    fail(ERROR_READ_FAILED, "LittleFS Open Error: %s", lfs_err_str(err).c_str());
                 }
                 auto size = lfs_file_size(lfs, &file);
                 err = lfs_file_rewind(lfs, &file);
                 std::vector<char> data_buf(size);
                 err = lfs_file_read(lfs, &file, data_buf.data(), data_buf.size());
                 if (err < 0) {
-                    fail(ERROR_READ_FAILED, "LittleFS Read Error %d", err);
+                    fail(ERROR_READ_FAILED, "LittleFS Read Error: %s", lfs_err_str(err).c_str());
                 } else if (err != data_buf.size()) {
                     fail(ERROR_READ_FAILED, "LittleFS Read too short - got %d bytes expected %d bytes", err, data_buf.size());
                 }
@@ -6836,7 +6883,7 @@ bool bdev_cat_command::execute(device_map &devices) {
                 FIL file;
                 int err = f_open(fatfs, &file, settings.filenames[0].c_str(), FA_READ);
                 if (err) {
-                    fail(ERROR_READ_FAILED, "FatFS Open Error %d", err);
+                    fail(ERROR_READ_FAILED, "FatFS Open Error: %s", fatfs_err_str(err).c_str());
                 }
                 auto size = f_size(&file);
                 err = f_rewind(&file);
@@ -6844,7 +6891,7 @@ bool bdev_cat_command::execute(device_map &devices) {
                 UINT bytes_read;
                 err = f_read(&file, data_buf.data(), data_buf.size(), &bytes_read);
                 if (err) {
-                    fail(ERROR_READ_FAILED, "FatFS Read Error %d", err);
+                    fail(ERROR_READ_FAILED, "FatFS Read Error: %s", fatfs_err_str(err).c_str());
                 } else if (bytes_read != data_buf.size()) {
                     fail(ERROR_READ_FAILED, "FatFS Read too short - got %d bytes expected %d bytes", bytes_read, data_buf.size());
                 }
