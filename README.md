@@ -1404,11 +1404,11 @@ BDEV:
     Commands related to embedded block devices
 
 SYNOPSIS:
-    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
-    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
-    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
-    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
-    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
+    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
+    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
+    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
+    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 SUB COMMANDS:
     ls      List contents of the block device
@@ -1429,11 +1429,11 @@ BDEV LS:
     List contents of the block device
 
 SYNOPSIS:
-    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev ls <dirname> [-r] [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 OPTIONS:
         <dirname>
-            The file name
+            The directory name to list (optional)
         -r, --recursive
             List files in directories recursively
     Block device options
@@ -1445,7 +1445,7 @@ OPTIONS:
             Specify filesystem to use
         <fs>
             littlefs|fatfs
-        -f, --format
+        --format
             Format the drive if necessary (may result in data loss)
     Target device selection
         --bus <bus>
@@ -1477,7 +1477,7 @@ BDEV MKDIR:
     Create directory on the block device
 
 SYNOPSIS:
-    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev mkdir <dirname> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 OPTIONS:
         <dirname>
@@ -1491,7 +1491,7 @@ OPTIONS:
             Specify filesystem to use
         <fs>
             littlefs|fatfs
-        -f, --format
+        --format
             Format the drive if necessary (may result in data loss)
     Target device selection
         --bus <bus>
@@ -1515,7 +1515,8 @@ OPTIONS:
 
 ### cp
 
-Copy file to/from the block device - use :filename to indicate files on the device (eg `cp main.py :main.py` to upload to the device)
+Copy file to/from the block device - use :filename to indicate files on the device (e.g. `cp main.py :main.py` to upload to the device, or `cp :main.py main.py` to download from the device)  
+
 
 ```text
 $ picotool help bdev cp
@@ -1523,7 +1524,7 @@ BDEV CP:
     Copy file to/from the block device - use :filename to indicate files on the device (eg `cp main.py :main.py` to upload to the device)
 
 SYNOPSIS:
-    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev cp <src> <dest> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 OPTIONS:
         <src>
@@ -1539,7 +1540,7 @@ OPTIONS:
             Specify filesystem to use
         <fs>
             littlefs|fatfs
-        -f, --format
+        --format
             Format the drive if necessary (may result in data loss)
     Target device selection
         --bus <bus>
@@ -1571,7 +1572,7 @@ BDEV RM:
     Delete a file or an empty directory on the block device
 
 SYNOPSIS:
-    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev rm <filename> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 OPTIONS:
         <filename>
@@ -1585,7 +1586,7 @@ OPTIONS:
             Specify filesystem to use
         <fs>
             littlefs|fatfs
-        -f, --format
+        --format
             Format the drive if necessary (may result in data loss)
     Target device selection
         --bus <bus>
@@ -1617,7 +1618,7 @@ BDEV CAT:
     Print contents of file on the block device
 
 SYNOPSIS:
-    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [-f] [device-selection]
+    picotool bdev cat <filename> [-p <partition>] [--filesystem <fs>] [--format] [device-selection]
 
 OPTIONS:
         <filename>
@@ -1631,7 +1632,7 @@ OPTIONS:
             Specify filesystem to use
         <fs>
             littlefs|fatfs
-        -f, --format
+        --format
             Format the drive if necessary (may result in data loss)
     Target device selection
         --bus <bus>
