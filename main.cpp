@@ -6347,14 +6347,14 @@ void fatfs_ls(FATFS *fatfs, const char *path, bool recursive=false) {
     FF_DIR dir;
     err = f_opendir(fatfs, &dir, path);
     if (err) {
-        fos << "FatFS Error " << err << "\n";
+        fos << "FatFS Error: " << fatfs_err_str(err) << "\n";
     }
 
     FILINFO info;
     while (true) {
         int res = f_readdir(&dir, &info);
         if (res != 0) {
-            fos << "FatFS Res " << res << "\n";
+            fos << "FatFS Res: " << fatfs_err_str(res) << "\n";
             break;
         }
 
@@ -6397,7 +6397,7 @@ void fatfs_ls(FATFS *fatfs, const char *path, bool recursive=false) {
 
     err = f_closedir(&dir);
     if (err) {
-        fos << "FatFS Error " << err << "\n";
+        fos << "FatFS Error: " << fatfs_err_str(err) << "\n";
     }
 }
 
@@ -6504,14 +6504,14 @@ void lfs_ls(lfs_t *lfs, const char *path, bool recursive=false) {
     lfs_dir_t dir;
     err = lfs_dir_open(lfs, &dir, path);
     if (err) {
-        fos << "LittleFS Error " << err << "\n";
+        fos << "LittleFS Error: " << lfs_err_str(err) << "\n";
     }
 
     struct lfs_info info;
     while (true) {
         int res = lfs_dir_read(lfs, &dir, &info);
         if (res < 0) {
-            fos << "LittleFS Res " << res << "\n";
+            fos << "LittleFS Res: " << lfs_err_str(res) << "\n";
             break;
         }
 
@@ -6544,7 +6544,7 @@ void lfs_ls(lfs_t *lfs, const char *path, bool recursive=false) {
 
     err = lfs_dir_close(lfs, &dir);
     if (err) {
-        fos << "LittleFS Error " << err << "\n";
+        fos << "LittleFS Error: " << lfs_err_str(err) << "\n";
     }
 }
 
@@ -6594,15 +6594,20 @@ bool bdev_ls_command::execute(device_map &devices) {
     auto con = get_single_bootsel_device_connection(devices);
     setup_bdevfs(con);
 
-    string dir = "";
+    string dir = "/";
     if (settings.filenames[0].length() > 0) {
-        dir += settings.filenames[0];
+        if (settings.filenames[0].front() == '/') {
+            dir = settings.filenames[0];
+        } else {
+            dir += settings.filenames[0];
+        }
     }
-    if ((char)(dir.back()) == '/') {
+    if ((char)(dir.back()) == '/' && dir.length() > 1) {
+        // FatFS doesn't like trailing slashes except for root, and LittleFS requires / for root
         dir.pop_back();
     }
 
-    fos << settings.filenames[0] << "/\n";
+    fos << dir << (dir.back() == '/' ? "" : "/") << "\n";
 
     switch (settings.bdev.fs) {
         case fs_littlefs: {
@@ -6638,7 +6643,7 @@ bool bdev_mkdir_command::execute(device_map &devices) {
                 if (err == LFS_ERR_EXIST) {
                     fos << "Directory already exists\n";
                 } else if (err) {
-                    fos << "LittleFS Error " << err << "\n";
+                    fos << "LittleFS Error: " << lfs_err_str(err) << "\n";
                 }
             };
             do_lfs_op(lfs_op);
@@ -6651,7 +6656,7 @@ bool bdev_mkdir_command::execute(device_map &devices) {
                 if (err == FR_EXIST) {
                     fos << "Directory already exists\n";
                 } else if (err) {
-                    fos << "FatFS Error " << err << "\n";
+                    fos << "FatFS Error: " << fatfs_err_str(err) << "\n";
                 }
             };
             do_fatfs_op(fatfs_op);
@@ -6814,7 +6819,7 @@ bool bdev_rm_command::execute(device_map &devices) {
                 } else if (err == LFS_ERR_NOENT) {
                     fail(ERROR_NOT_POSSIBLE, "File to remove does not exist");
                 } else if (err) {
-                    fail(ERROR_WRITE_FAILED, "LittleFS Error %d", err);
+                    fail(ERROR_WRITE_FAILED, "LittleFS Error: %s", lfs_err_str(err).c_str());
                 }
             };
             do_lfs_op(lfs_op);
@@ -6829,7 +6834,7 @@ bool bdev_rm_command::execute(device_map &devices) {
                 } else if (err == FR_NO_FILE) {
                     fail(ERROR_NOT_POSSIBLE, "File to remove does not exist");
                 } else if (err) {
-                    fail(ERROR_WRITE_FAILED, "FatFS Error %d", err);
+                    fail(ERROR_WRITE_FAILED, "FatFS Error: %s", fatfs_err_str(err).c_str());
                 }
             };
             do_fatfs_op(fatfs_op);
