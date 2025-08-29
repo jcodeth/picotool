@@ -713,12 +713,14 @@ auto device_selection =
     named_file_types_x(types, i)\
 ).min(0).doc_non_optional(true)
 
-#define optional_untyped_file_selection_x(name, i)\
+#define optional_untyped_path_selection_x(name, desc, i)\
 (\
     value(name).with_exclusion_filter([](const string &value) {\
             return value.find_first_of('-') == 0;\
-        }).set(settings.filenames[i]).min(0) % "The file name"\
+        }).set(settings.filenames[i]).min(0) % desc\
 ).min(0).doc_non_optional(true)
+
+#define optional_untyped_file_selection_x(name, i) optional_untyped_path_selection_x(name, "The file name", i)
 
 #define option_file_selection_x(option, i)\
 (\
@@ -834,7 +836,7 @@ auto bdev_options = (
             integer("partition").set(settings.bdev.partition) % "partition number").force_expand_help(true) +
     (option("--filesystem") % "Specify filesystem to use" &
             bdev_fs("fs").set(settings.bdev.fs) % "littlefs|fatfs").force_expand_help(true) +
-    (option('f', "--format").set(settings.bdev.format) % "Format the drive if necessary (may result in data loss)")
+    (option("--format").set(settings.bdev.format) % "Format the drive if necessary (may result in data loss)")
 ).min(0).doc_non_optional(true) % "Block device options";
 
 struct bdev_ls_command : public cmd {
@@ -843,7 +845,7 @@ struct bdev_ls_command : public cmd {
 
     group get_cli() override {
         return (
-            optional_untyped_file_selection_x("dirname", 0) +
+            optional_untyped_path_selection_x("dirname", "The directory name to list (optional)", 0) +
             option('r', "--recursive").set(settings.bdev.recursive) % "List files in directories recursively" +
             bdev_options +
             device_selection % "Target device selection"
@@ -2370,8 +2372,15 @@ struct picoboot_memory_access : public memory_access {
                     return;
                 }
                 // Check if we need to erase (ie check for non 0xff)
-                if (!std::all_of(write_data.cbegin(), write_data.cend(), [](uint8_t v) { return v == 0xff; })) {
-                    // Do automatically erase flash, and make it aligned
+                bool do_erase = false;
+                for (int i = 0; i < write_data.size(); i++) {
+                    if (buffer[i] & ~write_data[i]) {
+                        do_erase = true;
+                        break;
+                    }
+                }
+                if (do_erase) {
+                    // Automatically erase flash, and make it aligned
                     // we have to erase in whole pages
                     range aligned_range(address & ~(FLASH_SECTOR_ERASE_SIZE - 1),
                                         ((address + size) & ~(FLASH_SECTOR_ERASE_SIZE - 1)) + FLASH_SECTOR_ERASE_SIZE);
@@ -6230,11 +6239,19 @@ static_assert(FF_MAX_SS == FF_MIN_SS, "FF_MAX_SS must be equal to FF_MIN_SS");
 #define SECTOR_SIZE FF_MAX_SS
 
 DRESULT disk_read (void *drv, BYTE* buff, DWORD sector, UINT count) {
+    if (sector >= bdevfs_setup.size / SECTOR_SIZE) {
+        fail(ERROR_NOT_POSSIBLE, "Sector %d is out of range", sector);
+        return RES_PARERR;
+    }
     bdevfs_setup.access->read(bdevfs_setup.base_addr + (sector * SECTOR_SIZE), (uint8_t*)buff, count * SECTOR_SIZE, false);
     return RES_OK;
 }
 
 DRESULT disk_write (void *drv, const BYTE* buff, DWORD sector, UINT count) {
+    if (sector >= bdevfs_setup.size / SECTOR_SIZE) {
+        fail(ERROR_NOT_POSSIBLE, "Sector %d is out of range", sector);
+        return RES_PARERR;
+    }
     if (bdevfs_setup.writeable) {
         bdevfs_setup.access->write(bdevfs_setup.base_addr + (sector * SECTOR_SIZE), (uint8_t*)buff, count * SECTOR_SIZE);
         return RES_OK;
@@ -6276,6 +6293,11 @@ DRESULT disk_ioctl (void *drv, BYTE cmd, void* buff) {
                 // Only trim complete flash sectors
                 if (start % FLASH_SECTOR_ERASE_SIZE) start += FLASH_SECTOR_ERASE_SIZE - (start % FLASH_SECTOR_ERASE_SIZE);
                 end -= end % FLASH_SECTOR_ERASE_SIZE;
+                // Check if start and end are in range
+                if (start < bdevfs_setup.base_addr || end > bdevfs_setup.base_addr + bdevfs_setup.size) {
+                    fail(ERROR_NOT_POSSIBLE, "Start or end is out of range");
+                    return RES_PARERR;
+                }
                 for (uint32_t addr = start; addr < end; addr += FLASH_SECTOR_ERASE_SIZE) {
                     bdevfs_setup.connection->flash_erase(addr, FLASH_SECTOR_ERASE_SIZE);
                 }
@@ -6388,11 +6410,19 @@ void do_fatfs_op(fatfs_op_fn fatfs_op) {
 
 // LittleFS Functions
 int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size) {
+    if (block >= bdevfs_setup.size / c->block_size) {
+        fail(ERROR_NOT_POSSIBLE, "Block %d is out of range", block);
+        return LFS_ERR_INVAL;
+    }
     bdevfs_setup.access->read(bdevfs_setup.base_addr + (block * c->block_size) + off, (uint8_t*)buffer, size, false);
     return LFS_ERR_OK;
 }
 
 int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, const void *buffer, lfs_size_t size) {
+    if (block >= bdevfs_setup.size / c->block_size) {
+        fail(ERROR_NOT_POSSIBLE, "Block %d is out of range", block);
+        return LFS_ERR_INVAL;
+    }
     if (bdevfs_setup.writeable) {
         bdevfs_setup.access->write(bdevfs_setup.base_addr + (block * c->block_size) + off, (uint8_t*)buffer, size);
         return LFS_ERR_OK;
@@ -6403,6 +6433,10 @@ int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, const
 };
 
 int lfs_erase(const struct lfs_config *c, lfs_block_t block) {
+    if (block >= bdevfs_setup.size / c->block_size) {
+        fail(ERROR_NOT_POSSIBLE, "Block %d is out of range", block);
+        return LFS_ERR_INVAL;
+    }
     if (bdevfs_setup.writeable) {
         bdevfs_setup.connection->flash_erase(bdevfs_setup.base_addr + (block * c->block_size), c->block_size);
         return LFS_ERR_OK;
@@ -6613,6 +6647,11 @@ bool bdev_cp_command::execute(device_map &devices) {
     if (!srcRemote) {
         auto infile = get_file_idx(ios::in|ios::binary|ios::ate, 0);
         auto size = infile->tellg();
+        uint32_t max_size = bdevfs_setup.access->get_model()->flash_end() - bdevfs_setup.access->get_model()->flash_start();
+        if (size > max_size) {
+            fail(ERROR_NOT_POSSIBLE, "File size %dMB is too large for flash device (max %dMB)", size / (1024 * 1024), max_size / (1024 * 1024));
+            return false;
+        }
         infile->seekg(0, std::ios::beg);
         data_buf.resize(size);
         infile->read(data_buf.data(), size);
