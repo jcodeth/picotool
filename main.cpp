@@ -2373,7 +2373,7 @@ struct picoboot_memory_access : public memory_access {
                 if (std::equal(write_data.cbegin(), write_data.cend(), buffer)) {
                     return;
                 }
-                // Check if we need to erase (ie check for non 0xff)
+                // Check if we need to erase (ie check for bits that need to be set)
                 bool do_erase = false;
                 for (int i = 0; i < write_data.size(); i++) {
                     if (buffer[i] & ~write_data[i]) {
@@ -6218,7 +6218,7 @@ void setup_bdevfs_internal() {
         }
 
         // No FS Found
-        fail(ERROR_CONNECTION, "No file system detected - to format the drive use `-f --filesystem <littlefs|fatfs>`");
+        fail(ERROR_CONNECTION, "No file system detected - to format the drive use `--format --filesystem <littlefs|fatfs>`");
     }
 }
 
@@ -6581,7 +6581,7 @@ void do_lfs_op(lfs_op_fn lfs_op) {
                 fail(ERROR_NOT_POSSIBLE, "This block device is not formattable");
             }
         } else {
-            fail(ERROR_CONNECTION, "LittleFS file system is corrupted - add -f flag to format it (this may result in data loss)");
+            fail(ERROR_CONNECTION, "LittleFS file system is corrupted - add --format flag to format it (this may result in data loss)");
         }
     } else if (err) {
         fail(ERROR_CONNECTION, "LittleFS Mount Error: %s", lfs_err_str(err).c_str());
