@@ -560,6 +560,15 @@ Partition 1
   none
 ```
 
+## reboot
+
+`reboot` allows you to reboot a device that is in BOOTSEL mode, or in application mode running compatible code (see [Forced Reboots](#forced-reboots)). You can reboot it into application or BOOTSEL mode, and select the Arm or Risc-V CPU on RP2350
+
+```text
+$ picotool help reboot
+    Let CI do it
+```
+
 ## seal
 
 `seal` allows you to sign and/or hash a binary to run on RP2350.
