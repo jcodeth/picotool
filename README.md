@@ -300,7 +300,7 @@ OPTIONS:
         -v, --verify
             Verify the data was written correctly
         -x, --execute
-            Attempt to execute the downloaded file as a program after the load
+            Perform a flash update boot to execute the downloaded file as a program after the load
     File to load from
         <filename>
             The file name
