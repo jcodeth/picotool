@@ -50,29 +50,52 @@ int read_keys(const std::string &filename, public_t *public_key, private_t *priv
     int rc;
 
     mbedtls_pk_init(&pk_ctx);
+
+    size_t last_slash = filename.find_last_of("/\\");
+    std::string base_filename = (last_slash == std::string::npos) ? filename : filename.substr(last_slash + 1);
+
+    if (base_filename == "fromEnv.pem") {
+        const char* env_key = std::getenv("PICO_PRIVATE_KEY");
+        if (!env_key) {
+            fail(ERROR_FORMAT, "Environment variable PICO_PRIVATE_KEY is not set");
+        }
+
 #if MBEDTLS_VERSION_MAJOR >= 3
-    // This rng is only used for blinding when reading the key file
-    // As this should only be done on a secure computer, blinding is not required, so it's fine to not actually seed it with any entropy
-    mbedtls_ctr_drbg_context ctr_drbg;
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-    rc = mbedtls_pk_parse_keyfile(&pk_ctx, filename.c_str(), NULL, mbedtls_ctr_drbg_random, &ctr_drbg);
+        mbedtls_ctr_drbg_context ctr_drbg;
+        mbedtls_ctr_drbg_init(&ctr_drbg);
+        rc = mbedtls_pk_parse_key(&pk_ctx, (const unsigned char*)env_key, 
+                                  strlen(env_key) + 1, NULL, 0, 
+                                  mbedtls_ctr_drbg_random, &ctr_drbg);
 #else
-    rc = mbedtls_pk_parse_keyfile(&pk_ctx, filename.c_str(), NULL);
+        rc = mbedtls_pk_parse_key(&pk_ctx, (const unsigned char*)env_key, 
+                                  strlen(env_key) + 1, NULL, 0);
 #endif
+    } else {
+#if MBEDTLS_VERSION_MAJOR >= 3
+        mbedtls_ctr_drbg_context ctr_drbg;
+        mbedtls_ctr_drbg_init(&ctr_drbg);
+        rc = mbedtls_pk_parse_keyfile(&pk_ctx, filename.c_str(), NULL, mbedtls_ctr_drbg_random, &ctr_drbg);
+#else
+        rc = mbedtls_pk_parse_keyfile(&pk_ctx, filename.c_str(), NULL);
+#endif
+    }
+
     if (rc != 0) {
         char error_string[128];
         mbedtls_strerror(rc, error_string, sizeof(error_string));
-        fail(ERROR_FORMAT, "Failed to read key file %s, error %s", filename.c_str(), error_string);
+        fail(ERROR_FORMAT, "Failed to read key, error %s", error_string);
         return -1;
     }
     
     const mbedtls_ecp_keypair *keypair = mbedtls_pk_ec(pk_ctx);
     if (!keypair) {
-        fail(ERROR_FORMAT, "Failed to parse key file %s", filename.c_str());
+        fail(ERROR_FORMAT, "Failed to parse key");
     }
     mbedtls_mpi_write_binary(&keypair->d, reinterpret_cast<unsigned char *>(private_key), 32);
     mbedtls_mpi_write_binary(&keypair->Q.X, reinterpret_cast<unsigned char *>(public_key), 32);
     mbedtls_mpi_write_binary(&keypair->Q.Y, reinterpret_cast<unsigned char *>(public_key) + 32, 32);
+    
+    mbedtls_pk_free(&pk_ctx);
     return 0;
 }
 #endif
